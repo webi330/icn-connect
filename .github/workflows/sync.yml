@@ -52,10 +52,15 @@ jobs:
           ICN_STATE_PATH: site/sync_state.json
         run: |
           case "$MODE" in
-            probe) python icn_gate_sync.py --config config.github.ini --probe ;;
-            demo)  python icn_gate_sync.py --config config.github.ini --demo ;;
-            *)     python icn_gate_sync.py --config config.github.ini ;;
+            probe) ARG="--probe"; TITLE="API 응답 확인 결과" ;;
+            demo)  ARG="--demo";  TITLE="샘플 데이터 생성 결과" ;;
+            *)     ARG="";        TITLE="데이터 갱신 결과" ;;
           esac
+          rc=0
+          python icn_gate_sync.py --config config.github.ini $ARG > run_out.txt 2>&1 || rc=$?
+          cat run_out.txt
+          { echo "## $TITLE"; echo '```'; cat run_out.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
 
       - name: 페이지 파일 묶기
         if: env.MODE != 'probe'
