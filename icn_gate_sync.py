@@ -166,12 +166,15 @@ def fetch_day(cfg, budget, op, date_str):
     per = cfg.getint("api", "rows_per_page", fallback=1000)
     while True:
         budget.use()
-        data = call_api(cfg, op, {
+        params = {
             "pageNo": page, "numOfRows": per,
             "searchdtCode": cfg.get("api", "searchdt_code", fallback="E"),
             "searchDate": date_str, "searchFrom": "0000", "searchTo": "2400",
-            "passengerOrCargo": "P",
-        })
+        }
+        poc = cfg.get("api", "passenger_or_cargo", fallback="P").strip()
+        if poc:                       # 제2터미널 여객기 전용 API 는 이 값이 필요 없으므로 비워 둡니다.
+            params["passengerOrCargo"] = poc
+        data = call_api(cfg, op, params)
         items, total = extract_items(data)
         rows.extend(items)
         if not items or len(rows) >= total or page >= 20:
@@ -343,7 +346,11 @@ def run_probe(cfg):
         op = cfg.get("api", key)
         print("\n===== %s (%s) =====" % (label, op))
         budget.use()
-        data = call_api(cfg, op, {"pageNo": 1, "numOfRows": 100, "searchDate": today, "searchFrom": "0000", "searchTo": "2400", "passengerOrCargo": "P"})
+        params = {"pageNo": 1, "numOfRows": 100, "searchDate": today, "searchFrom": "0000", "searchTo": "2400"}
+        poc = cfg.get("api", "passenger_or_cargo", fallback="P").strip()
+        if poc:
+            params["passengerOrCargo"] = poc
+        data = call_api(cfg, op, params)
         items, total = extract_items(data)
         print("전체 건수(totalCount):", total, " / 이번에 받은 건수:", len(items))
         with open(os.path.join(HERE, "probe_%s.json" % ("arrivals" if key.startswith("arr") else "departures")), "w", encoding="utf-8") as f:
