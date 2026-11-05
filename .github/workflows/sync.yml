@@ -1,0 +1,70 @@
+yaml
+name: ICN CONNECT 데이터 갱신
+
+on:
+  schedule:
+    # 10분마다. 정각에는 GitHub 가 붐벼서 조금 비켜 둡니다. (몇 분 늦게 실행될 수 있음)
+    - cron: "3,13,23,33,43,53 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "실행 방식 (sync: 정식 / probe: API 응답 필드 확인 / demo: 샘플 화면)"
+        type: choice
+        options: [sync, probe, demo]
+        default: sync
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: icn-connect
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      MODE: ${{ github.event.inputs.mode || 'sync' }}
+      TZ: Asia/Seoul
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 이전 데이터 상태 가져오기
+        run: |
+          mkdir -p site
+          curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/sync_state.json?t=$(date +%s)" -o site/sync_state.json || echo "이전 상태가 없습니다 (첫 실행이면 정상)."
+
+      - name: 화면 파일 복사
+        run: cp index.html site/index.html
+
+      - name: 데이터 갱신 실행
+        env:
+          ICN_SERVICE_KEY: ${{ secrets.ICN_SERVICE_KEY }}
+          ICN_DATA_JS_PATH: site/data.js
+          ICN_STATE_PATH: site/sync_state.json
+        run: |
+          case "$MODE" in
+            probe) python icn_gate_sync.py --config config.github.ini --probe ;;
+            demo)  python icn_gate_sync.py --config config.github.ini --demo ;;
+            *)     python icn_gate_sync.py --config config.github.ini ;;
+          esac
+
+      - name: 페이지 파일 묶기
+        if: env.MODE != 'probe'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: 페이지 게시
+        id: deployment
+        if: env.MODE != 'probe'
+        uses: actions/deploy-pages@v4
