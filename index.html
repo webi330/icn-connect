@@ -471,6 +471,16 @@ const CITY = {
   ATL: "애틀랜타", DTW: "디트로이트", SEA: "시애틀", MSP: "미니애폴리스", AMS: "암스테르담",
   CGK: "자카르타", DPS: "발리", XMN: "샤먼"
 };
+/* 공항공사 API 는 기종을 IATA 코드(예: 359)로 줍니다. 아래 표로 읽기 쉬운 이름으로 바꾸고, 표에 없는 코드는 그대로 보여줍니다. */
+const AIRCRAFT_NAMES = {
+  "359": "A350-900", "351": "A350-1000", "333": "A330-300", "332": "A330-200", "339": "A330-900", "338": "A330-800",
+  "388": "A380-800", "380": "A380", "223": "A220-300", "221": "A220-100",
+  "321": "A321", "32A": "A320", "32B": "A321", "32Q": "A321neo", "32N": "A320neo", "320": "A320", "319": "A319", "31N": "A319neo",
+  "77W": "B777-300ER", "773": "B777-300", "772": "B777-200", "77L": "B777-200LR", "77F": "B777F",
+  "789": "B787-9", "788": "B787-8", "78X": "B787-10",
+  "744": "B747-400", "748": "B747-8", "74H": "B747-8", "74N": "B747-8F", "74Y": "B747-400F",
+  "738": "B737-800", "73H": "B737-800", "739": "B737-900", "73J": "B737-900", "7M8": "B737 MAX 8", "7M9": "B737 MAX 9"
+};
 const letters = (r, n) => Array.from({ length: n }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(r() * 24)]).join("");
 const AIRLINES = [
   { c: "KE", w: 6, reg: r => "HL" + (7200 + Math.floor(r() * 800)), mix: true,
@@ -621,7 +631,7 @@ const Api = {
     return (d.flights || []).map(f => {
       if (f.aptName) CITY[f.apt] = f.aptName;
       const sched = isoToMin(date, f.sched), est = isoToMin(date, f.est), actual = isoToMin(date, f.actual);
-      return { dir: f.dir, flight: f.flight, reg: f.reg || "", type: f.type || "", gate: String(f.gate), apt: f.apt, sched, est: est !== sched ? est : null, actual };
+      return { dir: f.dir, flight: f.flight, reg: f.reg || "", type: AIRCRAFT_NAMES[f.type] || f.type || "", gate: String(f.gate), apt: f.apt, sched, est: est !== sched ? est : null, actual };
     });
   }
 };

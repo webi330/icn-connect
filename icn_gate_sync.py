@@ -44,7 +44,8 @@ LOG_PATH = os.path.join(HERE, "sync.log")
 # ---------------------------------------------------------------------------
 FIELDS = {
     "flight":   (["flightId", "flightid", "flightNo"], ()),
-    "gate":     (["gatenumber", "gateNumber", "gate"], ()),
+    "gate":     (["gateNumber", "gatenumber", "gate"], ()),
+    "stand":    (["fstandPosition", "standPosition", "stand"], ()),
     "terminal": (["terminalId", "terminalid", "terminal"], ()),
     "apt_code": (["airportCode", "airportcode"], ()),
     "apt_name": (["airport", "airportName"], ()),
@@ -346,7 +347,7 @@ def run_probe(cfg):
         op = cfg.get("api", key)
         print("\n===== %s (%s) =====" % (label, op))
         budget.use()
-        params = {"pageNo": 1, "numOfRows": 100, "searchDate": today, "searchFrom": "0000", "searchTo": "2400"}
+        params = {"pageNo": 1, "numOfRows": 1000, "searchDate": today, "searchFrom": "0000", "searchTo": "2400"}
         poc = cfg.get("api", "passenger_or_cargo", fallback="P").strip()
         if poc:
             params["passengerOrCargo"] = poc
@@ -361,9 +362,18 @@ def run_probe(cfg):
         print("첫 항목 예시:")
         print(json.dumps(items[0], ensure_ascii=False, indent=2))
         print("터미널 값 분포:", dict(Counter(pick(i, "terminal") for i in items)))
-        print("필드 매핑 결과(100건 중 값이 있는 건수):")
+        print("필드 매핑 결과(받은 %d건 중 값이 있는 건수):" % len(items))
         for name in ("flight", "gate", "terminal", "apt_code", "sched", "est", "actual", "reg", "type", "remark"):
             print("  %-9s %3d건  예: %s" % (name, sum(1 for i in items if pick(i, name)), next((pick(i, name) for i in items if pick(i, name)), "-")))
+        print("현황(remark) 값 분포:", dict(Counter(pick(i, "remark") for i in items)))
+        print("기종 코드 분포:", dict(Counter(pick(i, "type") for i in items).most_common(30)))
+        gates = sorted(set(pick(i, "gate") for i in items if pick(i, "gate")))
+        stands = sorted(set(pick(i, "stand") for i in items if pick(i, "stand")))
+        print("게이트번호 값 (%d종): %s" % (len(gates), ", ".join(gates)))
+        print("주기장 값 (%d종): %s" % (len(stands), ", ".join(stands)))
+        diff = [(pick(i, "flight"), pick(i, "gate"), pick(i, "stand")) for i in items if pick(i, "gate") != pick(i, "stand")]
+        print("게이트와 주기장이 다른 항목: %d건, 예: %s" % (len(diff), diff[:6]))
+        print("게이트 없음: %d건 / 등록기호 없음: %d건" % (sum(1 for i in items if not pick(i, "gate")), sum(1 for i in items if not pick(i, "reg"))))
     print("\n저장된 파일: probe_arrivals.json, probe_departures.json (인증키는 들어 있지 않습니다)")
 
 
