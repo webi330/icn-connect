@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ICN CONNECT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #003366;
+  --red: #c01933;
+  --red-hover: #a3142b;
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --ink: #1b2430;
+  --muted: #5b6776;
+  --line: #dde2e9;
+  --band: #003366;
+  --band-ink: #ffffff;
+  --band-muted: #b8c7da;
+  --link: #003366;
+  --info: #1f5fae;
+  --warn: #b7791f;
+  --notice-bg: #fff4e5;
+  --notice-ink: #6b4208;
+  --notice-line: #f1d3a5;
+  --row-hover: #f6f8fb;
+  --grid-min: rgba(0, 51, 102, 0.05);
+  --grid-half: rgba(0, 51, 102, 0.11);
+  --grid-hour: rgba(0, 51, 102, 0.22);
+  --tick: #a9b6c7;
+  --bar-done-bg: #dde4ee;
+  --bar-done-ink: #34475f;
+  --bar-done-edge: #a9b8cd;
+  --bar-act-bg: #003366;
+  --bar-act-ink: #ffffff;
+  --bar-plan-bg: #eaf1fa;
+  --bar-plan-ink: #12294a;
+  --bar-plan-edge: #5b82b3;
+  --gw: 92px;
+  --rh: 60px;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --navy: #6fa8ff;
+    --bg: #0d1520;
+    --surface: #152030;
+    --ink: #e8edf3;
+    --muted: #9aa7b6;
+    --line: #26364a;
+    --band: #0b2545;
+    --band-muted: #9fb3cc;
+    --link: #8dbbff;
+    --info: #7db2f5;
+    --warn: #e3b05b;
+    --red: #e5405a;
+    --red-hover: #f0566e;
+    --notice-bg: #3a2b12;
+    --notice-ink: #f2d9ad;
+    --notice-line: #5c4420;
+    --row-hover: #1a2738;
+    --grid-min: rgba(141, 187, 255, 0.06);
+    --grid-half: rgba(141, 187, 255, 0.13);
+    --grid-hour: rgba(141, 187, 255, 0.26);
+    --tick: #4a607c;
+    --bar-done-bg: #26374d;
+    --bar-done-ink: #b7c6da;
+    --bar-done-edge: #3b5272;
+    --bar-act-bg: #2f6db5;
+    --bar-plan-bg: #1d3049;
+    --bar-plan-ink: #dbe7f7;
+    --bar-plan-edge: #5b8fd1;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --navy: #6fa8ff;
+  --bg: #0d1520;
+  --surface: #152030;
+  --ink: #e8edf3;
+  --muted: #9aa7b6;
+  --line: #26364a;
+  --band: #0b2545;
+  --band-muted: #9fb3cc;
+  --link: #8dbbff;
+  --info: #7db2f5;
+  --warn: #e3b05b;
+  --red: #e5405a;
+  --red-hover: #f0566e;
+  --notice-bg: #3a2b12;
+  --notice-ink: #f2d9ad;
+  --notice-line: #5c4420;
+  --row-hover: #1a2738;
+  --grid-min: rgba(141, 187, 255, 0.06);
+  --grid-half: rgba(141, 187, 255, 0.13);
+  --grid-hour: rgba(141, 187, 255, 0.26);
+  --tick: #4a607c;
+  --bar-done-bg: #26374d;
+  --bar-done-ink: #b7c6da;
+  --bar-done-edge: #3b5272;
+  --bar-act-bg: #2f6db5;
+  --bar-plan-bg: #1d3049;
+  --bar-plan-ink: #dbe7f7;
+  --bar-plan-edge: #5b8fd1;
+  color-scheme: dark;
+}
+
+html { scroll-padding-top: env(safe-area-inset-top, 0px); background: var(--band); }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Lato", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--info); outline-offset: 2px; }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+
+/* Header */
+.util { background: var(--band); color: var(--band-muted); font-size: 12.5px; }
+.util .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; height: 32px; }
+.util .meta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.util .meta.stale { color: #ffb3be; font-weight: 700; }
+.top { background: var(--surface); color: var(--ink); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 36px; height: 68px; }
+.brand { display: flex; align-items: center; gap: 14px; font-weight: 900; font-size: 21px; letter-spacing: 0.06em; color: var(--navy); white-space: nowrap; }
+.brand i { display: block; width: 4px; height: 26px; background: var(--red); border-radius: 1px; }
+.brand .logo { display: block; height: 30px; width: auto; }
+.brand.has-logo i { width: 1px; height: 28px; background: var(--line); border-radius: 0; }
+.nav { display: flex; gap: 4px; flex: 1; align-self: stretch; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { display: flex; align-items: center; color: var(--muted); text-decoration: none; padding: 0 16px; border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 700; }
+.nav a:hover { color: var(--navy); }
+.nav a[aria-current="page"] { color: var(--navy); border-bottom-color: var(--red); }
+
+.notice { background: var(--notice-bg); color: var(--notice-ink); border-bottom: 1px solid var(--notice-line); font-size: 13.5px; }
+.notice .wrap { padding-top: 9px; padding-bottom: 9px; }
+
+/* Title band + controls */
+.hero { background: var(--band); color: var(--band-ink); padding: 34px 0 84px; }
+.hero h1 { margin: 0 0 6px; font-weight: 300; font-size: 38px; line-height: 1.2; letter-spacing: -0.01em; }
+.hero p { margin: 0; color: var(--band-muted); font-size: 16px; font-weight: 300; }
+
+.controls {
+  margin-top: -52px; position: relative; background: var(--surface); border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 20, 50, 0.16); padding: 20px 24px 24px;
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+}
+.field label, .field .lab { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 700; }
+.field input {
+  height: 48px; padding: 0 14px; background: var(--surface); width: 100%;
+  border: 1px solid var(--line); border-bottom: 2px solid var(--muted); border-radius: 3px;
+}
+.field input:focus { border-bottom-color: var(--red); outline: none; }
+.field input:focus-visible { outline: 3px solid var(--info); outline-offset: 2px; }
+.f-date { width: 190px; } .f-search { flex: 1 1 260px; min-width: 220px; }
+.seg { display: inline-flex; height: 48px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.seg button { padding: 0 18px; border: 0; border-left: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--band); color: #fff; font-weight: 700; }
+.btn { height: 48px; padding: 0 28px; border: 0; border-radius: 3px; cursor: pointer; background: var(--red); color: #fff; font-weight: 700; font-size: 16px; }
+.btn:hover { background: var(--red-hover); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--muted); font-weight: 700; }
+.btn.ghost:hover { background: var(--row-hover); }
+.hits { font-size: 13px; color: var(--muted); margin-top: 4px; min-height: 20px; }
+
+main { padding: 24px 0 56px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; margin-top: 24px; }
+.panel:first-of-type { margin-top: 0; }
+.panel > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 18px 24px 14px; }
+.panel h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.sub { color: var(--muted); font-size: 13px; }
+
+/* KPI strip */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); }
+.kpi { padding: 20px 24px; border-left: 1px solid var(--line); }
+.kpi:first-child { border-left: 0; }
+.kpi .label { font-size: 13px; color: var(--muted); }
+.kpi .value { font-size: 34px; font-weight: 300; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi .value small { font-size: 15px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+.kpi .note { font-size: 13px; color: var(--muted); }
+.kpi.alert .value { color: var(--red); }
+
+/* A350 주기 가능 게이트 색상 */
+:root { --cap-bg: #d6ebf3; --cap-bg-hover: #c3e1ee; --cap-ink: #0b4f6c; --cap-edge: #1d7fa6; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --cap-bg: #1a4357; --cap-bg-hover: #215269; --cap-ink: #cdeaf6; --cap-edge: #4aa6cc; }
+}
+:root[data-theme="dark"] { --cap-bg: #1a4357; --cap-bg-hover: #215269; --cap-ink: #cdeaf6; --cap-edge: #4aa6cc; }
+
+/* Legend */
+.legend { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+#gates > header { padding-bottom: 16px; }
+#gates > header > div:first-child { order: 2; white-space: nowrap; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 26px; height: 14px; border-radius: 2px; border: 1.5px solid transparent; display: inline-block; position: relative; }
+.sw.done { background: var(--bar-done-bg); border-color: var(--bar-done-edge); }
+.sw.act { background: var(--bar-act-bg); }
+.sw.plan { background: var(--bar-plan-bg); border-color: var(--bar-plan-edge); }
+.sw.delay { background: var(--bar-plan-bg); border-color: var(--bar-plan-edge); box-shadow: inset 0 -3px 0 var(--red); }
+.sw.conf { background: var(--bar-plan-bg); border-color: var(--red); }
+.sw.single { background: var(--bar-plan-bg); border: 1.5px dashed var(--bar-plan-edge); }
+.sw.cap { background: var(--cap-bg); border-color: var(--cap-edge); box-shadow: inset 4px 0 0 var(--cap-edge); }
+.legstar { font-size: 18px; font-weight: 900; line-height: 1; color: var(--cap-ink); width: 26px; text-align: center; }
+.sw.est { background: var(--bar-act-bg); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.30) 0 3px, transparent 3px 6px); }
+
+/* Gantt */
+.gantt { position: relative; overflow: auto; max-height: min(74vh, 960px); border-top: 1px solid var(--line); background: var(--surface); }
+.g-inner { position: relative; width: max-content; min-width: 100%; }
+.g-head { display: flex; position: sticky; top: 0; z-index: 6; height: 52px; background: var(--surface); border-bottom: 1px solid var(--grid-hour); }
+.g-corner {
+  position: sticky; left: 0; z-index: 7; flex: none; width: var(--gw); background: var(--surface); border-right: 1px solid var(--grid-hour);
+  padding: 0 12px 8px; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; color: var(--muted); line-height: 1.3;
+}
+.g-corner b { color: var(--ink); font-size: 13px; }
+.g-axis { position: relative; flex: none; height: 52px; width: calc(288 * var(--u)); }
+.tick { position: absolute; bottom: 0; width: 1px; background: var(--tick); }
+.hlabel { position: absolute; top: 6px; font-size: 12px; font-weight: 700; transform: translateX(5px); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hlabel.half { font-weight: 400; color: var(--muted); }
+.nowflag { position: absolute; top: 25px; transform: translateX(-50%); background: var(--red); color: #fff; font-size: 11px; font-weight: 700; padding: 0 6px; line-height: 17px; border-radius: 2px; z-index: 2; font-variant-numeric: tabular-nums; }
+.nowline { position: absolute; top: 52px; bottom: 0; width: 2px; margin-left: -1px; background: var(--red); z-index: 3; pointer-events: none; }
+
+.g-row { display: flex; height: var(--rh); border-bottom: 1px solid var(--line); }
+.g-gate {
+  position: sticky; left: 0; z-index: 4; flex: none; width: var(--gw); background: var(--surface);
+  border-right: 1px solid var(--grid-hour); display: flex; align-items: center; padding: 0 12px;
+  font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums;
+}
+.g-track {
+  position: relative; flex: none; width: calc(288 * var(--u));
+  background-image:
+    linear-gradient(to right, var(--grid-hour) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-half) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-min) 1px, transparent 1px);
+  background-size: calc(12 * var(--u)) 100%, calc(6 * var(--u)) 100%, var(--u) 100%;
+}
+.g-row.grp { border-top: 3px solid var(--grid-hour); }
+.g-row:hover .g-track { background-color: var(--row-hover); }
+.g-row:hover .g-gate { background: var(--row-hover); }
+.g-gate.cap { background: var(--cap-bg); color: var(--cap-ink); box-shadow: inset 4px 0 0 var(--cap-edge); padding-left: 14px; }
+.g-row:hover .g-gate.cap { background: var(--cap-bg-hover); }
+.g-gate sup { font-size: 11px; font-weight: 700; margin-left: 1px; line-height: 1; vertical-align: top; position: relative; top: 4px; }
+.g-gate .star { font-size: 22px; line-height: 1; margin-left: 3px; position: relative; top: 4px; }
+
+.bar {
+  position: absolute; top: 6px; height: 48px; padding: 3px 7px; overflow: hidden; white-space: nowrap;
+  border: 1.5px solid transparent; border-radius: 3px; font-size: 11.5px; line-height: 14px; cursor: pointer; z-index: 2;
+  text-align: left;
+}
+.bar:hover, .bar:focus-visible { z-index: 5; filter: brightness(0.97); }
+.bar .b1 { display: flex; gap: 6px; align-items: baseline; }
+.bar .b1 b { font-size: 12.5px; font-weight: 900; }
+.bar .b1 span { opacity: 0.85; }
+.bar .b2, .bar .b3 { overflow: hidden; text-overflow: ellipsis; }
+.bar .rt { display: none; }
+.bar.half { height: 27px; padding: 1px 6px; line-height: 11px; font-size: 10.5px; }
+.bar.half .b1 b { font-size: 11px; }
+.bar.half .b3 { display: none; }
+.bar.half .rt { display: inline; margin-left: 8px; }
+.bar.lane0 { top: 2px; } .bar.lane1 { top: 31px; }
+.bar.done { background: var(--bar-done-bg); color: var(--bar-done-ink); border-color: var(--bar-done-edge); }
+.bar.active { background: var(--bar-act-bg); color: var(--bar-act-ink); }
+.bar.plan { background: var(--bar-plan-bg); color: var(--bar-plan-ink); border-color: var(--bar-plan-edge); }
+.bar.delay { box-shadow: inset 0 -3px 0 var(--red); }
+.bar.conflict { border-color: var(--red); border-width: 2px; }
+.bar.clipL { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left-style: dashed; }
+.bar.clipR { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-style: dashed; }
+.bar.single { border-style: dashed; }
+.bar.single.active { border-color: rgba(255, 255, 255, 0.55); }
+.bar.dim { opacity: 0.18; }
+.tail { position: absolute; top: 0; bottom: 0; right: 0; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.28) 0 3px, transparent 3px 6px); pointer-events: none; }
+.empty { padding: 36px 24px; color: var(--muted); text-align: center; }
+
+/* Tooltip */
+.tip {
+  position: fixed; z-index: 50; left: 0; top: 0; width: min(400px, calc(100vw - 24px)); display: none; pointer-events: none;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-top: 3px solid var(--navy);
+  border-radius: 4px; box-shadow: 0 10px 30px rgba(0, 20, 50, 0.28); padding: 14px 16px 12px; font-size: 13px; line-height: 1.45;
+}
+.tip .t-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.tip .t-head b { font-size: 17px; font-weight: 900; }
+.tip .t-head span { color: var(--muted); }
+.tip .t-meta { color: var(--muted); margin: 2px 0 10px; font-variant-numeric: tabular-nums; }
+.chip { display: inline-block; font-weight: 700; font-size: 12px; padding: 1px 8px; border-radius: 10px; border: 1px solid currentColor; margin-left: 6px; }
+.chip.done { color: var(--muted); } .chip.active { color: var(--info); } .chip.plan { color: var(--navy); }
+.tip table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tip th, .tip td { padding: 6px 6px; text-align: left; border-top: 1px solid var(--line); vertical-align: top; }
+.tip thead th { font-size: 12px; color: var(--muted); border-top: 0; padding-top: 0; }
+.tip tbody th { font-weight: 700; white-space: nowrap; }
+.tip tbody th small { display: block; font-weight: 400; color: var(--muted); }
+.tip td em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
+.tip td em.bad { color: var(--red); font-weight: 700; }
+.tip td.none { color: var(--muted); }
+.tip .t-foot { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.tip .t-warn { margin-top: 8px; color: var(--red); font-weight: 700; }
+
+/* Data table */
+.tablewrap { overflow-x: auto; }
+table.plain { width: 100%; border-collapse: collapse; }
+.plain th { text-align: left; font-size: 13px; font-weight: 700; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.plain td { padding: 12px 16px; border-top: 1px solid var(--line); }
+.plain th:first-child, .plain td:first-child { padding-left: 24px; }
+.plain th:last-child, .plain td:last-child { padding-right: 24px; }
+.badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--warn); white-space: nowrap; }
+.badge::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid currentColor; }
+.badge.check { color: var(--red); }
+.badge.live { color: #1a7f5a; } .badge.live::before { background: currentColor; }
+
+footer { background: var(--band); color: var(--band-muted); font-size: 13px; }
+footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .kpi:nth-child(3) { border-left: 0; }
+  .kpi:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 640px) {
+  :root { --gw: 72px; }
+  .wrap { padding: 0 16px; }
+  .top .wrap { gap: 16px; }
+  .top .meta { display: none; }
+  .hero h1 { font-size: 28px; }
+  .controls { padding: 16px; }
+  .f-date { width: 100%; }
+  .panel > header { padding-left: 16px; padding-right: 16px; }
+  .kpi { padding: 16px; } .kpi .value { font-size: 28px; }
+  .g-gate { padding: 0 8px; font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<div class="util">
+  <div class="wrap">
+    <span>인천국제공항 제2여객터미널</span>
+    <span class="meta" id="updated">갱신 전</span>
+  </div>
+</div>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><i aria-hidden="true"></i>ICN CONNECT</div>
+    <nav class="nav" aria-label="주 메뉴">
+      <a href="#gates" aria-current="page">T2 게이트 현황</a>
+    </nav>
+  </div>
+</header>
+
+<div class="notice" role="note">
+  <div class="wrap">현재 화면의 게이트 점유 데이터는 디자인 확인용 샘플입니다. API 연결 후 실제 운항 정보로 바뀝니다.</div>
+</div>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>T2 게이트 배정 현황</h1>
+    
+  </div>
+</section>
+
+<main>
+  <div class="wrap">
+
+    <form class="controls" id="controls" aria-label="조회 조건">
+      <div class="field f-date">
+        <label for="date">날짜</label>
+        <input type="date" id="date">
+      </div>
+      <div class="field f-search">
+        <label for="q">등록기호, 편명, 공항</label>
+        <input type="search" id="q" placeholder="예: HL7612, KE652, BKK" autocomplete="off">
+      </div>
+      <div class="field">
+        <span class="lab" id="zoomLab">가로 배율</span>
+        <div class="seg" role="group" aria-labelledby="zoomLab">
+          <button type="button" data-u="8" aria-pressed="false">좁게</button>
+          <button type="button" data-u="12" aria-pressed="true">보통</button>
+          <button type="button" data-u="18" aria-pressed="false">넓게</button>
+        </div>
+      </div>
+      <button class="btn" type="submit">조회</button>
+      <button class="btn ghost" type="button" id="goNow">현재 시각으로 이동</button>
+    </form>
+
+    <div class="panel" style="margin-top:24px">
+      <div class="kpis" id="kpis" aria-live="polite"></div>
+    </div>
+
+    <section class="panel" id="gates" aria-label="T2 게이트 배정 현황">
+      <header>
+        <div>
+          
+          <div class="sub" id="gSub"><span id="hitsInline"></span></div>
+        </div>
+        <div class="legend" aria-label="범례">
+          <span><i class="sw done"></i>출발 완료</span>
+          <span><i class="sw act"></i>점유 중</span>
+          <span><i class="sw est"></i>점유 중 예상 구간</span>
+          <span><i class="sw plan"></i>예정</span>
+          <span><i class="sw delay"></i>지연 항공편 (예정 대비 15분 이상)</span>
+          <span><i class="sw conf"></i>게이트 중첩</span>
+          <span><i class="sw cap"></i>A350-900 주기 가능 게이트</span>
+          <span><b class="legstar">*</b>A350-1000도 주기 가능</span>
+          <span><i class="sw single"></i>연결되지 않은 항공편 (도착 후 40분, 출발 80분 전)</span>
+        </div>
+      </header>
+      <div class="gantt" id="gantt" tabindex="0" aria-label="T2 게이트별 점유 현황 차트. 방향키로 스크롤합니다."></div>
+    </section>
+
+
+  </div>
+</main>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<footer>
+  <div class="wrap">
+    <span>내부 사용 전용</span>
+    <span>공공데이터포털(data.go.kr) 제공 데이터를 활용합니다.</span>
+  </div>
+</footer>
+
+<script>
+/* ==================================================================
+   설정
+   - GATE_RANGES: T2 실제 게이트 번호 구간입니다. 구간이 바뀌면 이 배열만 고칩니다.
+   - refreshSec: 실제 API는 호출 한도가 있으므로, 브라우저가 직접 부르지 않고
+     서버 프록시가 주기적으로 받아 캐시해 둔 값을 내려주는 구성을 권장합니다.
+================================================================== */
+const CONFIG = { useMock: false, refreshSec: 300, dataFile: "data.js", logoSrc: "" };   // logoSrc: 공식 로고 파일(SVG 또는 PNG)을 data URI로 넣으면 상단 왼쪽에 표시됩니다.
+const GATE_RANGES = [[208, 225], [231, 243], [245, 268], [275, 291]];
+const GROUP_BREAK_BEFORE = "250";   // 249번과 250번 사이에만 구분선을 넣습니다.
+/* A350 주기 가능 게이트. 번호 뒤의 R은 해당 게이트의 R 쪽 주기장을 뜻하는 표기로 보고, 게이트 줄에 작게 함께 표시합니다. */
+const A350_900 = ["216", "217", "218", "220", "221", "222", "223", "224", "225", "231", "232", "233", "236R", "239R", "241", "242", "246", "247", "248", "249", "251", "252", "253", "254", "256", "257", "258R", "261R", "265", "266", "267", "268", "275", "276", "277", "278", "280", "281", "282"];
+const A350_1000 = ["216", "222", "224", "225", "276", "280", "281", "282"];
+const gateCap = {};
+A350_900.forEach(code => { const g = code.replace(/[A-Z]+$/, ""); gateCap[g] = { a359: true, a35k: false, sfx: code.slice(g.length) }; });
+A350_1000.forEach(code => { const g = code.replace(/[A-Z]+$/, ""); (gateCap[g] = gateCap[g] || { a359: false, a35k: false, sfx: "" }).a35k = true; });
+function gateCell(g) {
+  const c = gateCap[g];
+  if (!c) return `<div class="g-gate">${g}</div>`;
+  const tip = [c.a359 ? "A350-900 주기 가능" : "", c.a35k ? "A350-1000 주기 가능" : "", c.sfx ? `${g}${c.sfx} 주기장 기준` : ""].filter(Boolean).join(", ");
+  return `<div class="g-gate cap" title="${tip}"><span>${g}</span>${c.sfx ? `<sup>${c.sfx}</sup>` : ""}${c.a35k ? `<b class="star" aria-label="A350-1000 주기 가능">*</b>` : ""}</div>`;
+}
+const GATES = GATE_RANGES.flatMap(([a, b]) => Array.from({ length: b - a + 1 }, (_, i) => String(a + i)));
+const DAY = 1440;          // 하루 분
+const STEP = 5;            // 가로 눈금 단위(분)
+
+/* ------------------------------------------------------------------
+   데이터 계층
+   1) Api.flights() 는 항공편 한 건 한 건의 목록을 돌려줍니다. 항목 형식:
+      { dir:"ARR"|"DEP", flight:"KE652", reg:"HL7612", type:"B787-9", gate:"235", apt:"BKK",
+        sched:380, est:395|null, actual:393|null }
+      시간은 선택한 날짜 00:00 기준 분(minute)입니다. 익일은 1440 이상, 전일은 음수.
+   2) buildOccupancies() 가 아래 규칙으로 점유 막대를 만듭니다. (규칙 값은 RULES 에서 수정)
+      - 같은 등록기호, 같은 게이트의 도착편과 출발편: 하나의 막대로 연결 (도착 시각 ~ 출발 시각)
+        단, 둘 사이에 같은 게이트에 다른 항공기의 도착이나 출발이 있으면 견인되어 나갔다가 돌아온 것으로 보고 연결하지 않음
+      - 연결되지 않은 도착편: 도착 시각부터 40분
+      - 연결되지 않은 출발편: 출발 시각의 80분 전부터 출발 시각까지
+      기준 시각은 실제, 변경, 예정 순으로 값이 있는 것을 씁니다.
+------------------------------------------------------------------- */
+const CITY = {
+  NRT: "도쿄 나리타", KIX: "오사카 간사이", BKK: "방콕", SIN: "싱가포르", LAX: "로스앤젤레스", JFK: "뉴욕 JFK",
+  SYD: "시드니", HKG: "홍콩", SFO: "샌프란시스코", DAD: "다낭", CDG: "파리 샤를 드 골", FRA: "프랑크푸르트",
+  ATL: "애틀랜타", DTW: "디트로이트", SEA: "시애틀", MSP: "미니애폴리스", AMS: "암스테르담",
+  CGK: "자카르타", DPS: "발리", XMN: "샤먼"
+};
+const letters = (r, n) => Array.from({ length: n }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(r() * 24)]).join("");
+const AIRLINES = [
+  { c: "KE", w: 6, reg: r => "HL" + (7200 + Math.floor(r() * 800)), mix: true,
+    fleet: [["B787-9", 1], ["B777-300ER", 1], ["A330-300", 1], ["A321neo", 0], ["B747-8", 1], ["A350-900", 1]],
+    dest: ["NRT", "KIX", "BKK", "SIN", "LAX", "JFK", "SYD", "HKG", "SFO", "DAD", "CDG", "FRA"] },
+  { c: "DL", w: 2, reg: r => "N" + (100 + Math.floor(r() * 899)) + letters(r, 2), fleet: [["A350-900", 1], ["A330-900", 1]], dest: ["ATL", "DTW", "SEA", "MSP"] },
+  { c: "AF", w: 1, reg: r => "F-H" + letters(r, 3), fleet: [["B777-300ER", 1]], dest: ["CDG"] },
+  { c: "KL", w: 1, reg: r => "PH-B" + letters(r, 2), fleet: [["B787-10", 1]], dest: ["AMS"] },
+  { c: "GA", w: 1, reg: r => "PK-G" + letters(r, 2), fleet: [["A330-300", 1]], dest: ["CGK", "DPS"] },
+  { c: "MF", w: 1, reg: r => "B-" + (1000 + Math.floor(r() * 8999)), fleet: [["B737-800", 0]], dest: ["XMN"] }
+];
+
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const r5 = x => Math.round(x / STEP) * STEP;
+const eff = leg => leg.actual ?? leg.est ?? leg.sched;
+
+function localToday() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function nowMinutesFor(date) {
+  const today = localToday();
+  if (date < today) return 99999;           // 지난 날짜: 모두 실제 시각 반영
+  if (date > today) return -1;              // 미래 날짜: 모두 예정
+  const d = new Date(); return d.getHours() * 60 + d.getMinutes();
+}
+
+const RULES = { arrHold: 40, depHold: 80, maxPairGap: 1440 };
+
+function buildMock(date) {
+  const r = mulberry32([...date].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7));
+  const pick = arr => arr[Math.floor(r() * arr.length)];
+  const wpick = () => { const tot = AIRLINES.reduce((s, a) => s + a.w, 0); let x = r() * tot; for (const a of AIRLINES) { if ((x -= a.w) < 0) return a; } return AIRLINES[0]; };
+  const used = new Set();
+  const newReg = al => { let g, n = 0; do { g = al.reg(r); } while (used.has(g) && ++n < 200); used.add(g); return g; };
+  const turns = {}, extras = [];
+  GATES.forEach((gate, gi) => {
+    let t = r5(r() * 150) + (gi % 4) * 10;
+    const list = (turns[gate] = []);
+    while (t < DAY) {
+      const al = wpick(), [type, wide] = pick(al.fleet);
+      const kp = r(), kind = kp < 0.10 ? "arr" : kp < 0.20 ? "dep" : "pair";   // 일부는 한쪽 항공편만 이 게이트에 있음
+      let dur = r5(wide ? 100 + r() * 170 : 55 + r() * 40);
+      if (kind === "dep") dur = Math.max(dur, 85);
+      const pool = (al.c === "KE" && !wide) ? ["NRT", "KIX", "HKG", "DAD", "BKK"] : al.dest;
+      const from = pick(pool), to = (al.mix && r() < 0.5) ? pick(pool) : from;
+      const n = 100 + Math.floor(r() * 880);
+      const p = r();
+      const da = p < 0.2 ? 15 + 5 * Math.floor(r() * 5) : p < 0.3 ? -5 * (1 + Math.floor(r() * 2)) : 0;
+      let dd = da + (r() < 0.3 ? 5 * Math.floor(r() * 5) : 0);
+      const arrS = t, depS = t + dur;
+      if (depS + dd - (arrS + da) < 30) dd = arrS + da + 30 - depS;
+      const reg = newReg(al);
+      const mk = (dir, flight, apt, sched, est) => ({ dir, flight, reg, type, gate, apt, sched, est, actual: null });
+      list.push({
+        arr: kind === "dep" ? null : mk("ARR", `${al.c}${n}`, from, arrS, da ? arrS + da : null),
+        dep: kind === "arr" ? null : mk("DEP", `${al.c}${n + 1}`, to, depS, dd ? depS + dd : null)
+      });
+      // 체류가 긴 광동체는 일부를 견인 사례로 만듭니다: 도착과 출발 사이에 다른 항공기가 이 게이트에 들어옴
+      const cur = list[list.length - 1];
+      if (kind === "pair") {
+        const lo = arrS + Math.max(da, 0) + 55, hi = depS + Math.min(dd, 0) - 140;
+        if (hi >= lo && r() < 0.8) {
+          const al2 = AIRLINES[0], [type2] = al2.fleet[3];
+          const innerS = lo + r5(r() * (hi - lo));
+          extras.push({ dir: "ARR", flight: `${al2.c}${100 + Math.floor(r() * 880)}`, reg: newReg(al2), type: type2, gate, apt: pick(["NRT", "KIX", "HKG", "DAD", "BKK"]), sched: innerS, est: null, actual: null });
+          cur.hasInner = true;
+        }
+      }
+      const endOcc = kind === "arr" ? arrS + Math.max(da, 0) + RULES.arrHold : depS + Math.max(dd, 0);
+      t = endOcc + 15 + r5(r() * 50);
+    }
+  });
+  // 데모용 게이트 충돌 2건: 앞 항공기 출발 지연으로 다음 항공기 점유와 겹치게 만듭니다.
+  [[6, 2], [17, 3]].forEach(([gi, k0]) => {
+    const list = turns[GATES[gi]];
+    for (let k = k0; k < list.length - 1; k++) {
+      const a = list[k], b = list[k + 1];
+      if (a.arr && a.dep && !a.hasInner) {
+        const nextStart = b.arr ? eff(b.arr) : eff(b.dep) - RULES.depHold;
+        a.dep.est = r5(nextStart + 20);
+        break;
+      }
+    }
+  });
+  const flights = [];
+  Object.values(turns).forEach(l => l.forEach(x => { if (x.arr) flights.push(x.arr); if (x.dep) flights.push(x.dep); }));
+  extras.forEach(f => flights.push(f));
+  // 실제 시각: 현재 시각까지 지난 항공편에만 반영
+  const now = nowMinutesFor(date);
+  const jit = () => 5 * (Math.floor(r() * 3) - 1);
+  flights.forEach(f => { const t = eff(f); if (t <= now) f.actual = Math.min(now, t + jit()); });
+  return flights;
+}
+
+/* 항공편 목록 -> 점유 막대 (도착편과 출발편을 등록기호로 연결) */
+function buildOccupancies(flights) {
+  const mkSingle = (f, towed) => {
+    const isArr = f.dir === "ARR";
+    const t = eff(f);
+    return { gate: f.gate, reg: f.reg, type: f.type, arr: isArr ? f : null, dep: isArr ? null : f, towed: !!towed,
+             _s: isArr ? t : t - RULES.depHold, _e: isArr ? t + RULES.arrHold : t };
+  };
+  const mkPair = (a, d) => ({ gate: a.gate, reg: a.reg, type: a.type || d.type, arr: a, dep: d, towed: false, _s: eff(a), _e: eff(d) });
+  // 같은 게이트에서 두 시각 사이에 다른 항공기의 도착이나 출발이 있으면 견인된 것으로 봅니다.
+  const byGate = {};
+  flights.forEach(f => (byGate[f.gate] = byGate[f.gate] || []).push(f));
+  const otherBetween = (a, d) => (byGate[a.gate] || []).some(o => o.reg !== a.reg && eff(o) > eff(a) && eff(o) < eff(d));
+  const out = [], byReg = {};
+  flights.forEach(f => { if (!f.reg) out.push(mkSingle(f)); else (byReg[f.reg] = byReg[f.reg] || []).push(f); });
+  Object.values(byReg).forEach(list => {
+    list.sort((a, b) => eff(a) - eff(b));
+    let pend = null;
+    list.forEach(f => {
+      if (f.dir === "ARR") { if (pend) out.push(mkSingle(pend)); pend = f; return; }
+      const linkable = pend && pend.gate === f.gate && eff(f) > eff(pend) && eff(f) - eff(pend) <= RULES.maxPairGap;
+      if (linkable && !otherBetween(pend, f)) { out.push(mkPair(pend, f)); pend = null; }
+      else if (linkable) { out.push(mkSingle(pend, true), mkSingle(f, true)); pend = null; }
+      else { if (pend) { out.push(mkSingle(pend)); pend = null; } out.push(mkSingle(f)); }
+    });
+    if (pend) out.push(mkSingle(pend));
+  });
+  return out;
+}
+
+/* 실제 데이터: 같은 폴더의 data.js (갱신 스크립트가 5분마다 만들어 둠) 를 읽습니다. */
+function loadDataFile() {
+  return new Promise((resolve, reject) => {
+    window.ICN_DATA = null;
+    const s = document.createElement("script");
+    s.charset = "utf-8";
+    s.src = `${CONFIG.dataFile}?t=${Date.now()}`;
+    s.onload = () => { s.remove(); window.ICN_DATA ? resolve(window.ICN_DATA) : reject(new Error("데이터 파일이 비어 있습니다.")); };
+    s.onerror = () => { s.remove(); reject(new Error("데이터 파일(data.js)을 찾을 수 없습니다.")); };
+    document.head.appendChild(s);
+  });
+}
+// "2026-11-05T14:35" 형식의 한국 시각을, 선택한 날짜 00:00 기준 분(minute)으로 바꿉니다.
+function isoToMin(date, iso) {
+  if (!iso) return null;
+  const [y, m, d] = date.split("-").map(Number);
+  const [dp, tp] = iso.split("T"); const [Y, M, D] = dp.split("-").map(Number); const [hh, mm] = tp.split(":").map(Number);
+  return Math.round((Date.UTC(Y, M - 1, D, hh, mm) - Date.UTC(y, m - 1, d)) / 60000);
+}
+
+const Api = {
+  async flights({ date }) {
+    if (CONFIG.useMock) return buildMock(date);
+    const d = await loadDataFile();
+    state.meta = d;
+    return (d.flights || []).map(f => {
+      if (f.aptName) CITY[f.apt] = f.aptName;
+      const sched = isoToMin(date, f.sched), est = isoToMin(date, f.est), actual = isoToMin(date, f.actual);
+      return { dir: f.dir, flight: f.flight, reg: f.reg || "", type: f.type || "", gate: String(f.gate), apt: f.apt, sched, est: est !== sched ? est : null, actual };
+    });
+  }
+};
+
+
+/* ------------------------------------------------------------------ 화면 */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, "0");
+const state = { date: localToday(), u: 12, q: "", items: [], now: -1, meta: null };
+const gantt = $("#gantt"), tip = $("#tip");
+
+function fmt(m) {
+  if (m == null) return "—";
+  let suf = "";
+  if (m >= DAY) { m -= DAY; suf = " (익일)"; } else if (m < 0) { m += DAY; suf = " (전일)"; }
+  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}${suf}`;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function analyze(items) {
+  const byGate = {}; let conflicts = 0;
+  const now = state.now;
+  items.forEach(it => {
+    it.conflict = false; it.lane = null;
+    it.delay = [it.arr, it.dep].filter(Boolean).some(l => eff(l) - l.sched >= 15);
+    if (it.arr && it.dep) it.st = it.dep.actual != null ? "done" : it.arr.actual != null ? "active" : "plan";
+    else if (it.arr) it.st = (now >= 0 && now >= it._e) ? "done" : it.arr.actual != null ? "active" : "plan";
+    else it.st = it.dep.actual != null ? "done" : (now >= 0 && now >= it._s) ? "active" : "plan";
+    (byGate[it.gate] = byGate[it.gate] || []).push(it);
+  });
+  Object.values(byGate).forEach(list => {
+    list.sort((a, b) => a._s - b._s);
+    list.forEach((it, k) => {
+      if (k > 0) {
+        const p = list[k - 1];
+        if (it._s < p._e) { it.conflict = p.conflict = true; if (p.lane == null) p.lane = 0; it.lane = 1 - p.lane; conflicts++; }
+      }
+    });
+  });
+  return conflicts;
+}
+
+function renderKpis(conflicts) {
+  const hasNow = state.now >= 0 && state.now < DAY;
+  const occ = new Set(state.items.filter(i => i.st === "active").map(i => i.gate)).size;
+  const delayed = state.items.filter(i => i.delay).length;
+  const k = [
+    { l: "점유 중 게이트", v: hasNow ? `${occ}` : "—", u: hasNow ? `/ ${GATES.length}` : "", n: hasNow ? "지금 항공기가 있는 게이트" : "오늘 날짜에서만 표시됩니다" },
+    { l: "배정 건수", v: state.items.length, u: "건", n: "선택한 날짜 기준" },
+    { l: "지연 항공편", v: delayed, u: "건", n: "예정 대비 15분 이상" },
+    { l: "게이트 중첩", v: conflicts, u: "건", n: "점유 시간이 겹침", alert: conflicts > 0 }
+  ];
+  $("#kpis").innerHTML = k.map(x => `<div class="kpi ${x.alert ? "alert" : ""}"><div class="label">${x.l}</div><div class="value">${x.v}<small>${x.u}</small></div><div class="note">${x.n}</div></div>`).join("");
+}
+
+function renderChart() {
+  const u = state.u;
+  gantt.style.setProperty("--u", u + "px");
+  const cols = DAY / STEP;
+  let ticks = "", labels = "";
+  for (let i = 0; i <= cols; i++) {
+    const h = i % 12 === 0 ? 18 : i % 6 === 0 ? 12 : 6;
+    ticks += `<i class="tick" style="left:${i * u}px;height:${h}px"></i>`;
+  }
+  for (let h = 0; h < 24; h++) {
+    labels += `<span class="hlabel" style="left:${h * 12 * u}px">${pad(h)}:00</span>`;
+    if (u >= 12) labels += `<span class="hlabel half" style="left:${(h * 12 + 6) * u}px">${pad(h)}:30</span>`;
+  }
+  const hasNow = state.now >= 0 && state.now < DAY;
+  const nowX = (state.now / STEP) * u;
+  const flag = hasNow ? `<span class="nowflag" style="left:${nowX}px">${fmt(state.now)}</span>` : "";
+
+  const byGate = {}; state.items.forEach((it, i) => { it._i = i; (byGate[it.gate] = byGate[it.gate] || []).push(it); });
+  const rows = GATES.map((g, idx) => {
+    const bars = (byGate[g] || []).map(barHtml).join("");
+    const grp = g === GROUP_BREAK_BEFORE ? " grp" : "";
+    return `<div class="g-row${grp}">${gateCell(g)}<div class="g-track">${bars}</div></div>`;
+  }).join("");
+
+  gantt.innerHTML = `<div class="g-inner">
+    <div class="g-head"><div class="g-corner"><b>게이트</b>눈금 5분</div><div class="g-axis">${ticks}${labels}${flag}</div></div>
+    ${rows}
+    ${hasNow ? `<div class="nowline" style="left:calc(var(--gw) + ${nowX}px)"></div>` : ""}
+  </div>`;
+  applySearch();
+}
+
+function barHtml(it) {
+  const u = state.u;
+  const s = Math.max(it._s, 0), e = Math.min(it._e, DAY);
+  if (e <= 0 || s >= DAY) return "";
+  const left = (s / STEP) * u, width = Math.max(((e - s) / STEP) * u - 1, u * 2);
+  const half = it.lane != null;
+  const single = !(it.arr && it.dep);
+  const cls = ["bar", it.st, it.delay ? "delay" : "", it.conflict ? "conflict" : "", single ? "single" : "", half ? `half lane${it.lane}` : "", it._s < 0 ? "clipL" : "", it._e > DAY ? "clipR" : ""].join(" ");
+  const flights = it.arr && it.dep ? `${it.arr.flight} → ${it.dep.flight}` : (it.arr || it.dep).flight;
+  const route = it.arr && it.dep ? `${it.arr.apt} → ${it.dep.apt}` : it.arr ? `${it.arr.apt} → ICN` : `ICN → ${it.dep.apt}`;
+  const hay = [it.reg, it.type, it.arr && it.arr.flight, it.dep && it.dep.flight, it.arr && it.arr.apt, it.dep && it.dep.apt, it.arr && CITY[it.arr.apt], it.dep && CITY[it.dep.apt]].filter(Boolean).join(" ").toLowerCase().replace(/\s+/g, " ");
+  let tail = "";
+  if (it.st === "active" && state.now > s && state.now < e) tail = `<i class="tail" style="left:${((state.now - s) / STEP) * u}px"></i>`;
+  const label = `${it.reg} ${it.type}, 게이트 ${it.gate}, ${fmt(it._s)}부터 ${fmt(it._e)}까지`;
+  return `<button class="${cls}" style="left:${left}px;width:${width}px" data-i="${it._i}" data-hay="${esc(hay)}" aria-label="${esc(label)}">
+    <div class="b1"><b>${esc(it.reg)}</b><span>${esc(it.type)}</span></div>
+    <div class="b2">${flights}<span class="rt">${route}</span></div>
+    <div class="b3">${route}</div>${tail}</button>`;
+}
+
+function applySearch() {
+  const q = state.q.trim().toLowerCase();
+  let hits = 0;
+  gantt.querySelectorAll(".bar").forEach(b => { const m = !q || b.dataset.hay.includes(q); b.classList.toggle("dim", !m); if (q && m) hits++; });
+  $("#hitsInline").textContent = q ? ` 검색 결과 ${hits}건` : "";
+}
+
+/* 툴팁 */
+function legRow(label, leg) {
+  const d = x => { const v = x - leg.sched; return `<em class="${v >= 15 ? "bad" : ""}">${v > 0 ? "+" : ""}${v}분</em>`; };
+  const name = CITY[leg.apt] ? `${CITY[leg.apt]} (${leg.apt})` : leg.apt;
+  return `<tr><th scope="row">${label}<div>${leg.flight}</div><small>${label === "도착" ? name + " → ICN" : "ICN → " + name}</small></th>
+    <td>${fmt(leg.sched)}</td>
+    ${leg.est != null ? `<td>${fmt(leg.est)}${d(leg.est)}</td>` : `<td class="none">변경 없음</td>`}
+    ${leg.actual != null ? `<td>${fmt(leg.actual)}${d(leg.actual)}</td>` : `<td class="none">미반영</td>`}</tr>`;
+}
+function tipHtml(it) {
+  const st = { done: "출발 완료", active: "점유 중", plan: "예정" }[it.st];
+  const kindNote = it.arr && it.dep ? ""
+    : it.towed ? (it.arr
+      ? `같은 항공기의 출발편이 있지만 그 사이에 다른 항공기가 배정되어 견인된 것으로 보고, 도착 시각부터 ${RULES.arrHold}분으로 표시합니다.`
+      : `같은 항공기의 도착편이 있지만 그 사이에 다른 항공기가 배정되어 견인되었다가 돌아온 것으로 보고, 출발 시각 ${RULES.depHold}분 전부터로 표시합니다.`)
+    : it.arr ? `같은 등록기호의 출발편이 이 게이트에 없어 도착 시각부터 ${RULES.arrHold}분으로 표시합니다.`
+    : `같은 등록기호의 도착편이 이 게이트에 없어 출발 시각 ${RULES.depHold}분 전부터로 표시합니다.`;
+  return `<div class="t-head"><b>${esc(it.reg)}</b><span>${esc(it.type)}<span class="chip ${it.st}">${st}</span></span></div>
+    <div class="t-meta">게이트 ${it.gate} 점유 ${fmt(it._s)} ~ ${fmt(it._e)} (${it._e - it._s}분)</div>
+    <table><thead><tr><th></th><th>예정</th><th>변경</th><th>실제</th></tr></thead><tbody>${it.arr ? legRow("도착", it.arr) : ""}${it.dep ? legRow("출발", it.dep) : ""}</tbody></table>
+    ${kindNote ? `<div class="t-foot" style="border-top:0;margin-top:4px;padding-top:0">${kindNote}</div>` : ""}
+    ${it.conflict ? `<div class="t-warn">같은 게이트의 앞뒤 항공기와 점유 시간이 겹칩니다.</div>` : ""}
+    <div class="t-foot">막대 구간은 실제 시각이 있으면 실제, 없으면 변경, 변경도 없으면 예정 시각 기준입니다.</div>`;
+}
+let tipOn = false;
+function placeTip(x, y) {
+  const w = tip.offsetWidth, h = tip.offsetHeight, m = 12;
+  let l = x + 16, t = y + 16;
+  if (l + w > innerWidth - m) l = x - w - 16;
+  if (l < m) l = Math.max(m, innerWidth - w - m);
+  if (t + h > innerHeight - m) t = y - h - 16;
+  if (t < m) t = m;
+  tip.style.left = l + "px"; tip.style.top = t + "px";
+}
+function showTip(bar, x, y) {
+  const it = state.items[+bar.dataset.i]; if (!it) return;
+  tip.innerHTML = tipHtml(it); tip.style.display = "block"; tipOn = true;
+  if (x == null) { const r = bar.getBoundingClientRect(); x = r.left + Math.min(r.width, 160) / 2; y = r.bottom - 20; }
+  placeTip(x, y);
+}
+function hideTip() { tip.style.display = "none"; tipOn = false; }
+
+gantt.addEventListener("mouseover", e => { const b = e.target.closest(".bar"); if (b) showTip(b, e.clientX, e.clientY); });
+gantt.addEventListener("mousemove", e => { if (tipOn) placeTip(e.clientX, e.clientY); });
+gantt.addEventListener("mouseout", e => { const b = e.target.closest(".bar"); if (b && !(e.relatedTarget && b.contains(e.relatedTarget))) hideTip(); });
+gantt.addEventListener("focusin", e => { const b = e.target.closest(".bar"); if (b) showTip(b); });
+gantt.addEventListener("focusout", hideTip);
+gantt.addEventListener("click", e => { const b = e.target.closest(".bar"); if (b) showTip(b, e.clientX, e.clientY); });
+gantt.addEventListener("scroll", hideTip, { passive: true });
+document.addEventListener("click", e => { if (!e.target.closest(".bar")) hideTip(); });
+
+/* 스크롤 */
+function scrollToNow(smooth) {
+  const u = state.u;
+  const target = (state.now >= 0 && state.now < DAY) ? (state.now / STEP) * u : (360 / STEP) * u;
+  gantt.scrollTo({ left: Math.max(0, target - gantt.clientWidth * 0.3), behavior: smooth ? "smooth" : "auto" });
+}
+
+/* 불러오기 */
+async function load(first) {
+  try {
+    state.now = nowMinutesFor(state.date);
+    const flights = await Api.flights({ date: state.date });
+    state.items = buildOccupancies(flights).filter(it => GATES.includes(it.gate) && it._e > 0 && it._s < DAY);
+    const conflicts = analyze(state.items);
+    renderKpis(conflicts);
+    const keepX = gantt.scrollLeft, keepY = gantt.scrollTop;
+    renderChart();
+    if (first) scrollToNow(false); else { gantt.scrollLeft = keepX; gantt.scrollTop = keepY; }
+    updateStamp();
+  } catch (err) {
+    gantt.innerHTML = `<div class="empty">게이트 데이터를 불러오지 못했습니다. ${esc(err.message || "")} 연결 상태를 확인한 뒤 다시 조회해 주세요.</div>`;
+  }
+}
+
+function updateStamp() {
+  const el = $("#updated");
+  let t = new Date(), stale = false, every = 5;
+  if (!CONFIG.useMock && state.meta && state.meta.generatedAt) {
+    const [dp, tp] = state.meta.generatedAt.split("T"); const [Y, M, D] = dp.split("-").map(Number); const [hh, mm] = tp.split(":").map(Number);
+    t = new Date(Y, M - 1, D, hh, mm);
+    every = state.meta.intervalMin || 5;
+    stale = (Date.now() - t.getTime()) > Math.max(15, every * 3) * 60000;
+    if (state.meta.range) { const dt = $("#date"); dt.min = state.meta.range.from; dt.max = state.meta.range.to; }
+  }
+  const hm = `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  el.textContent = stale ? `데이터 갱신이 지연되고 있습니다. 마지막 갱신 ${hm}` : `마지막 갱신 ${hm} (${every}분단위 업데이트)`;
+  el.classList.toggle("stale", stale);
+}
+
+/* 컨트롤 */
+(function initDate() {
+  const t = new Date(), f = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const lo = new Date(t); lo.setDate(t.getDate() - 3); const hi = new Date(t); hi.setDate(t.getDate() + 6);
+  const el = $("#date"); el.value = state.date; el.min = f(lo); el.max = f(hi);
+})();
+$("#date").addEventListener("change", e => { if (e.target.value) { state.date = e.target.value; load(true); } });
+$("#q").addEventListener("input", e => { state.q = e.target.value; applySearch(); });
+$("#controls").addEventListener("submit", e => {
+  e.preventDefault(); state.q = $("#q").value;
+  load(false).then(() => { const f = gantt.querySelector(".bar:not(.dim)"); if (state.q.trim() && f) f.scrollIntoView({ block: "nearest", inline: "center" }); });
+});
+$("#goNow").addEventListener("click", () => scrollToNow(true));
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  const center = ((gantt.scrollLeft + gantt.clientWidth / 2) / state.u) * STEP;
+  state.u = +b.dataset.u;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  renderChart();
+  gantt.scrollLeft = (center / STEP) * state.u - gantt.clientWidth / 2;
+}));
+
+load(true);
+if (CONFIG.logoSrc) {
+  const img = document.createElement("img");
+  img.src = CONFIG.logoSrc; img.alt = "Delta"; img.className = "logo";
+  const b = document.querySelector(".brand"); b.prepend(img); b.classList.add("has-logo");
+}
+if (!CONFIG.useMock) document.querySelector(".notice").hidden = true;
+setInterval(() => load(false), (CONFIG.useMock ? CONFIG.refreshSec : 60) * 1000);   // 파일 모드는 1분마다 data.js 를 다시 읽습니다.
+</script>
+</body>
+</html>
