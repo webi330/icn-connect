@@ -178,7 +178,7 @@ main { padding: 24px 0 56px; }
 .sub { color: var(--muted); font-size: 13px; }
 
 /* KPI strip */
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); }
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); }
 .kpi { padding: 20px 24px; border-left: 1px solid var(--line); }
 .kpi:first-child { border-left: 0; }
 .kpi .label { font-size: 13px; color: var(--muted); }
@@ -199,24 +199,24 @@ main { padding: 24px 0 56px; }
   --al-dl-fill: #003366;  --al-dl-ink: #ffffff;  --al-dl-line: #003366;  --al-dl-edge: #4a9be8;  --al-dl-hatch: rgba(255, 255, 255, 0.30);
   --al-sky-fill: #87ceeb; --al-sky-ink: #0b2a3d; --al-sky-line: #5fb0d9; --al-sky-edge: #1c6fa3; --al-sky-hatch: rgba(0, 0, 0, 0.14);
   --al-grn-fill: #d3eeb0; --al-grn-ink: #1f3b0f; --al-grn-line: #a3cf75; --al-grn-edge: #5f9a2a; --al-grn-hatch: rgba(0, 0, 0, 0.12);
-  --al-oth-fill: transparent; --al-oth-ink: var(--ink); --al-oth-line: #9aa7b6; --al-oth-edge: #44525f; --al-oth-hatch: rgba(0, 0, 0, 0.10);
-  --done-fill: #e4e7ec; --done-ink: #667385; --done-line: #cfd5dc;
+  --al-oth-fill: #fff3f7; --al-oth-ink: #3a1a26; --al-oth-line: #f5ccd9; --al-oth-edge: #d9739a; --al-oth-hatch: rgba(0, 0, 0, 0.10);
+  --done-fill: #e4e7ec; --done-ink: #667385; --done-line: #cfd5dc; --single-line: #000000;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --al-dl-fill: #1f5fae;  --al-dl-ink: #ffffff;  --al-dl-line: #1f5fae;  --al-dl-edge: #8fc1ff;  --al-dl-hatch: rgba(255, 255, 255, 0.28);
     --al-sky-fill: #2d86b8; --al-sky-ink: #ffffff; --al-sky-line: #2d86b8; --al-sky-edge: #8ad0f2; --al-sky-hatch: rgba(255, 255, 255, 0.28);
     --al-grn-fill: #86b556; --al-grn-ink: #10200a; --al-grn-line: #86b556; --al-grn-edge: #c9ec9e; --al-grn-hatch: rgba(0, 0, 0, 0.16);
-    --al-oth-fill: transparent; --al-oth-ink: var(--ink); --al-oth-line: #5b6a7c; --al-oth-edge: #b4c0cf; --al-oth-hatch: rgba(255, 255, 255, 0.12);
-    --done-fill: #243244; --done-ink: #8796a8; --done-line: #324358;
+    --al-oth-fill: #4a2a38; --al-oth-ink: #f6dbe5; --al-oth-line: #7a4559; --al-oth-edge: #f0a7c0; --al-oth-hatch: rgba(255, 255, 255, 0.14);
+    --done-fill: #243244; --done-ink: #8796a8; --done-line: #324358; --single-line: #f2f5f9;
   }
 }
 :root[data-theme="dark"] {
   --al-dl-fill: #1f5fae;  --al-dl-ink: #ffffff;  --al-dl-line: #1f5fae;  --al-dl-edge: #8fc1ff;  --al-dl-hatch: rgba(255, 255, 255, 0.28);
   --al-sky-fill: #2d86b8; --al-sky-ink: #ffffff; --al-sky-line: #2d86b8; --al-sky-edge: #8ad0f2; --al-sky-hatch: rgba(255, 255, 255, 0.28);
   --al-grn-fill: #86b556; --al-grn-ink: #10200a; --al-grn-line: #86b556; --al-grn-edge: #c9ec9e; --al-grn-hatch: rgba(0, 0, 0, 0.16);
-  --al-oth-fill: transparent; --al-oth-ink: var(--ink); --al-oth-line: #5b6a7c; --al-oth-edge: #b4c0cf; --al-oth-hatch: rgba(255, 255, 255, 0.12);
-  --done-fill: #243244; --done-ink: #8796a8; --done-line: #324358;
+  --al-oth-fill: #4a2a38; --al-oth-ink: #f6dbe5; --al-oth-line: #7a4559; --al-oth-edge: #f0a7c0; --al-oth-hatch: rgba(255, 255, 255, 0.14);
+  --done-fill: #243244; --done-ink: #8796a8; --done-line: #324358; --single-line: #f2f5f9;
 }
 
 /* Legend */
@@ -228,12 +228,12 @@ main { padding: 24px 0 56px; }
 .sw.dl { background: var(--al-dl-fill); border-color: var(--al-dl-line); }
 .sw.sky { background: var(--al-sky-fill); border-color: var(--al-sky-line); }
 .sw.grn { background: var(--al-grn-fill); border-color: var(--al-grn-line); }
-.sw.oth { background: transparent; border-color: var(--al-oth-line); }
+.sw.oth { background: var(--al-oth-fill); border-color: var(--al-oth-line); }
 .sw.done { background: var(--done-fill); border-color: var(--done-line); }
 .sw.act { background: var(--al-sky-fill); border: 3px solid var(--al-sky-edge); }
 .sw.delay { background: var(--al-sky-fill); border-color: var(--al-sky-line); box-shadow: inset 0 -3px 0 var(--red); }
 .sw.conf { background: var(--al-sky-fill); border-color: var(--red); }
-.sw.single { background: var(--al-sky-fill); border: 1.5px dashed var(--al-sky-line); }
+.sw.single { background: var(--al-sky-fill); border: 3px solid var(--single-line); }
 .sw.cap { background: var(--cap-bg); border-color: var(--cap-edge); box-shadow: inset 4px 0 0 var(--cap-edge); }
 .legstar { font-size: 18px; font-weight: 900; line-height: 1; color: var(--cap-ink); width: 26px; text-align: center; }
 .sw.est { background: var(--al-sky-fill); border: 3px solid var(--al-sky-edge); background-image: repeating-linear-gradient(135deg, var(--al-sky-hatch) 0 3px, transparent 3px 6px); }
@@ -293,7 +293,8 @@ main { padding: 24px 0 56px; }
 .bar .b1 span { opacity: 0.85; }
 .bar .b2, .bar .b3 { overflow: hidden; text-overflow: ellipsis; }
 .bar .rt { display: none; }
-.bar.half { height: 27px; padding: 1px 6px; line-height: 11px; font-size: 10.5px; }
+.bar.half { height: 28px; padding: 1px 6px; line-height: 11px; font-size: 10.5px; }
+.bar.half.active, .bar.half.single, .bar.half.conflict { border-width: 2px; }
 .bar.half .b1 b { font-size: 11px; }
 .bar.half .b3 { display: none; }
 .bar.half .rt { display: inline; margin-left: 8px; }
@@ -305,12 +306,14 @@ main { padding: 24px 0 56px; }
 .bar.al-oth { --fill: var(--al-oth-fill); --ink-c: var(--al-oth-ink); --line-c: var(--al-oth-line); --edge-c: var(--al-oth-edge); --hatch: var(--al-oth-hatch); }
 .bar.done { --fill: var(--done-fill); --ink-c: var(--done-ink); --line-c: var(--done-line); --edge-c: var(--done-line); }
 .bar.active { border-width: 3px; border-color: var(--edge-c); }
+.bar.single { border: 3px solid var(--single-line); }                                          /* 소산 항공편: 굵은 검정 테두리 */
+.bar.single.active { box-shadow: inset 0 0 0 2px var(--edge-c); }                              /* 소산 + 점유 중: 안쪽에 항공사 색 테두리를 한 겹 더 */
+.bar.single.active.delay { box-shadow: inset 0 0 0 2px var(--edge-c), inset 0 -3px 0 var(--red); }
 .bar.delay { box-shadow: inset 0 -3px 0 var(--red); }
 .bar.conflict { border-color: var(--red); border-width: 2px; }
 .bar.active.conflict { border-width: 3px; }
 .bar.clipL { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left-style: dashed; }
 .bar.clipR { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-style: dashed; }
-.bar.single:not(.active) { border-style: dashed; }
 .bar.dim { opacity: 0.18; }
 .tail { position: absolute; top: 0; bottom: 0; right: 0; background-image: repeating-linear-gradient(135deg, var(--hatch, rgba(0,0,0,.12)) 0 3px, transparent 3px 6px); pointer-events: none; }
 .empty { padding: 36px 24px; color: var(--muted); text-align: center; }
@@ -357,6 +360,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
   .kpis { grid-template-columns: 1fr 1fr; }
   .kpi:nth-child(3) { border-left: 0; }
   .kpi:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .kpi:nth-child(5) { border-left: 0; grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
   :root { --gw: 72px; }
@@ -520,7 +524,7 @@ const AIRCRAFT_NAMES = {
 };
 const letters = (r, n) => Array.from({ length: n }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(r() * 24)]).join("");
 const AIRLINES = [
-  { c: "KE", w: 6, reg: r => "HL" + (7200 + Math.floor(r() * 800)), mix: true,
+  { c: "KE", w: 6, reg: r => "HL" + (7000 + Math.floor(r() * 1000)), mix: true,
     fleet: [["B787-9", 1], ["B777-300ER", 1], ["A330-300", 1], ["A321neo", 0], ["B747-8", 1], ["A350-900", 1]],
     dest: ["NRT", "KIX", "BKK", "SIN", "LAX", "JFK", "SYD", "HKG", "SFO", "DAD", "CDG", "FRA"] },
   { c: "DL", w: 2, reg: r => "N" + (100 + Math.floor(r() * 899)) + letters(r, 2), fleet: [["A350-900", 1], ["A330-900", 1]], dest: ["ATL", "DTW", "SEA", "MSP"] },
@@ -528,8 +532,8 @@ const AIRLINES = [
   { c: "KL", w: 1, reg: r => "PH-B" + letters(r, 2), fleet: [["B787-10", 1]], dest: ["AMS"] },
   { c: "GA", w: 1, reg: r => "PK-G" + letters(r, 2), fleet: [["A330-300", 1]], dest: ["CGK", "DPS"] },
   { c: "MF", w: 1, reg: r => "B-" + (1000 + Math.floor(r() * 8999)), fleet: [["B737-800", 0]], dest: ["XMN"] },
-  { c: "OZ", w: 3, reg: r => "HL" + (7700 + Math.floor(r() * 300)), mix: true, fleet: [["A350-900", 1], ["A330-300", 1], ["A321neo", 0]], dest: ["NRT", "KIX", "BKK", "SIN", "HKG", "FRA", "LAX"] },
-  { c: "LJ", w: 3, reg: r => "HL" + (8200 + Math.floor(r() * 100)), fleet: [["B737-800", 0], ["B777-300ER", 1]], dest: ["NRT", "KIX", "DAD", "BKK"] },
+  { c: "OZ", w: 3, reg: r => "HL" + (8200 + Math.floor(r() * 500)), mix: true, fleet: [["A350-900", 1], ["A330-300", 1], ["A321neo", 0]], dest: ["NRT", "KIX", "BKK", "SIN", "HKG", "FRA", "LAX"] },
+  { c: "LJ", w: 3, reg: r => "HL" + (9000 + Math.floor(r() * 600)), fleet: [["B737-800", 0], ["B777-300ER", 1]], dest: ["NRT", "KIX", "DAD", "BKK"] },
   { c: "BX", w: 1, reg: r => "HL" + (8000 + Math.floor(r() * 100)), fleet: [["A321neo", 0]], dest: ["KIX", "DAD", "BKK"] },
   { c: "RS", w: 1, reg: r => "HL" + (8100 + Math.floor(r() * 100)), fleet: [["A321neo", 0]], dest: ["NRT", "DAD"] }
 ];
@@ -595,7 +599,7 @@ function buildMock(date, nowRel, usedRegs) {
     }
   });
   // 데모용 게이트 충돌 2건: 앞 항공기 출발 지연으로 다음 항공기 점유와 겹치게 만듭니다.
-  [[6, 0], [17, 0], [41, 0]].forEach(([gi, k0]) => {
+  [[17, 0]].forEach(([gi, k0]) => {
     const list = turns[GATES[gi]];
     for (let k = k0; k < list.length - 1; k++) {
       const a = list[k], b = list[k + 1];
@@ -638,7 +642,8 @@ function buildOccupancies(flights) {
       if (f.dir === "ARR") { if (pend) out.push(mkSingle(pend)); pend = f; return; }
       const linkable = pend && pend.gate === f.gate && eff(f) > eff(pend) && eff(f) - eff(pend) <= RULES.maxPairGap;
       if (linkable && (!f.gate || !otherBetween(pend, f))) { out.push(mkPair(pend, f)); pend = null; }
-      else if (linkable) { out.push(mkSingle(pend, true), mkSingle(f, true)); pend = null; }
+      else if (linkable && eff(f) - eff(pend) > RULES.arrHold + RULES.depHold) { out.push(mkSingle(pend, true), mkSingle(f, true)); pend = null; }   // 견인: 도착 40분 + 출발 80분 전
+      else if (linkable) { out.push(mkPair(pend, f)); pend = null; }          // 두 구간이 겹치는 짧은 체류는 계속 머문 것으로 봄
       else { if (pend) { out.push(mkSingle(pend)); pend = null; } out.push(mkSingle(f)); }
     });
     if (pend) out.push(mkSingle(pend));
@@ -739,17 +744,35 @@ function analyze(items) {
   return conflicts;
 }
 
+/* KE 정시율: A0 = 도착, D0 = 출발. 금일(예정시각이 오늘) KE 항공편 중 실제시각이 예정시각과 같거나 빠른 편의 비율입니다.
+   basis "completed": 실제 시각이 기록된(도착·출발 완료) 편만 분모로 사용 / "all": 오늘 KE 전체 편을 분모로 사용 */
+const OTP = { airline: "KE", basis: "completed" };
+function otpStats(flights, dir) {
+  const day = flights.filter(f => f.dir === dir && String(f.flight).toUpperCase().slice(0, 2) === OTP.airline && f.sched >= 0 && f.sched < DAY);
+  const done = day.filter(f => f.actual != null);
+  const ok = done.filter(f => f.actual <= f.sched).length;
+  const base = OTP.basis === "all" ? day.length : done.length;
+  return { total: day.length, done: done.length, ok, rate: base ? (ok / base) * 100 : null };
+}
+
 function renderKpis(conflicts) {
   const hasNow = state.now >= 0 && state.now < DAY;
   const occ = new Set(state.items.filter(i => i.gate && i.st === "active").map(i => i.gate)).size;
   const delayed = state.items.filter(i => i.delay).length;
+  const otpItem = (label, s, word) => ({
+    l: label,
+    v: s && s.rate != null ? s.rate.toFixed(1) : "—", u: s && s.rate != null ? "%" : "",
+    n: !s ? "" : OTP.basis === "all" ? `금일 전체 ${s.total}편 중 ${s.ok}편` : `${word} 완료 ${s.done}편 중 ${s.ok}편`,
+    t: `${OTP.airline} ${word} 정시율: 금일 ${OTP.airline} ${word} 항공편 중 예정시간 대비 실제시간이 같거나 빠른 항공편의 비율`
+  });
   const k = [
     { l: "점유 중 게이트", v: hasNow ? `${occ}` : "—", u: hasNow ? `/ ${GATES.length}` : "", n: hasNow ? "지금 항공기가 있는 게이트" : "오늘 날짜에서만 표시됩니다" },
-    { l: "배정 건수", v: state.items.filter(i => i.gate).length, u: "건", n: "표시 구간 기준" },
+    otpItem(`Today’s ${OTP.airline} A0`, state.otp && state.otp.a, "도착"),
+    otpItem(`Today’s ${OTP.airline} D0`, state.otp && state.otp.d, "출발"),
     { l: "지연 항공편", v: delayed, u: "건", n: "예정 대비 15분 이상" },
     { l: "게이트 중첩", v: conflicts, u: "건", n: "점유 시간이 겹침", alert: conflicts > 0 }
   ];
-  $("#kpis").innerHTML = k.map(x => `<div class="kpi ${x.alert ? "alert" : ""}"><div class="label">${x.l}</div><div class="value">${x.v}<small>${x.u}</small></div><div class="note">${x.n}</div></div>`).join("");
+  $("#kpis").innerHTML = k.map(x => `<div class="kpi ${x.alert ? "alert" : ""}"${x.t ? ` title="${esc(x.t)}"` : ""}><div class="label">${x.l}</div><div class="value">${x.v}<small>${x.u}</small></div><div class="note">${x.n}</div></div>`).join("");
 }
 
 /* 막대 색: 편명 앞 2글자(항공사 코드)로 정합니다. 표에 없는 항공사는 투명(al-oth)입니다. */
@@ -904,6 +927,14 @@ gantt.addEventListener("scroll", hideTip, { passive: true });
 document.addEventListener("click", e => { if (!e.target.closest(".bar")) hideTip(); });
 
 /* 스크롤 */
+const MAIN_GATE = "250";      // 처음 열었을 때 화면 세로 가운데에 오는 게이트 (바꾸려면 이 번호만 수정)
+function mainGateScrollTop() {
+  const i = GATES.indexOf(MAIN_GATE);
+  if (i < 0) return 0;
+  const HEAD = 52, ROW = 60;                                        // 시간축 높이, 게이트 한 줄 높이(px)
+  const rowCenter = HEAD + i * ROW + ROW / 2;
+  return Math.max(0, Math.round(rowCenter - (HEAD + (gantt.clientHeight - HEAD) / 2)));
+}
 function scrollToNow(smooth) {
   const target = ((state.now - state.win.start) / STEP) * state.u;
   gantt.scrollTo({ left: Math.max(0, target - gantt.clientWidth * 0.3), behavior: smooth ? "smooth" : "auto" });
@@ -920,12 +951,13 @@ async function load(first) {
     state.winAbs = startAbs;
     state.win = { start: startAbs - midAbs, end: startAbs - midAbs + WIN.before + WIN.ahead };
     const flights = await Api.flights();
+    state.otp = { a: otpStats(flights, "ARR"), d: otpStats(flights, "DEP") };
     state.items = buildOccupancies(flights).filter(it => (it.gate === "" || GATES.includes(it.gate)) && it._e > state.win.start && it._s < state.win.end);
     const conflicts = analyze(state.items);
     renderKpis(conflicts);
     const keepX = gantt.scrollLeft, keepY = gantt.scrollTop;
     renderChart();
-    if (first) { gantt.scrollLeft = 0; gantt.scrollTop = 0; }
+    if (first) { gantt.scrollLeft = 0; gantt.scrollTop = mainGateScrollTop(); }
     else { gantt.scrollLeft = Math.max(0, keepX - (shift / STEP) * state.u); gantt.scrollTop = keepY; }     // 표시 구간이 밀린 만큼 보정
     updateStamp();
   } catch (err) {
