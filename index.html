@@ -219,7 +219,7 @@ main { padding: 24px 0 56px; }
   padding: 0 12px 8px; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; color: var(--muted); line-height: 1.3;
 }
 .g-corner b { color: var(--ink); font-size: 13px; }
-.g-axis { position: relative; flex: none; height: 52px; width: calc(288 * var(--u)); }
+.g-axis { position: relative; flex: none; height: 52px; width: calc(var(--cols) * var(--u)); }
 .tick { position: absolute; bottom: 0; width: 1px; background: var(--tick); }
 .hlabel { position: absolute; top: 6px; font-size: 12px; font-weight: 700; transform: translateX(5px); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hlabel.half { font-weight: 400; color: var(--muted); }
@@ -233,14 +233,20 @@ main { padding: 24px 0 56px; }
   font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums;
 }
 .g-track {
-  position: relative; flex: none; width: calc(288 * var(--u));
+  position: relative; flex: none; width: calc(var(--cols) * var(--u));
   background-image:
     linear-gradient(to right, var(--grid-hour) 1px, transparent 1px),
     linear-gradient(to right, var(--grid-half) 1px, transparent 1px),
     linear-gradient(to right, var(--grid-min) 1px, transparent 1px);
   background-size: calc(12 * var(--u)) 100%, calc(6 * var(--u)) 100%, var(--u) 100%;
+  background-position: calc(var(--hoff) * var(--u)) 0, calc(var(--moff) * var(--u)) 0, 0 0;
 }
 .g-row.grp { border-top: 3px solid var(--grid-hour); }
+.g-row.un { border-top: 3px solid var(--grid-hour); }
+.g-gate.un { flex-direction: column; align-items: flex-start; justify-content: center; font-size: 14px; line-height: 1.3; gap: 2px; }
+.g-gate.un small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.hlabel.day { color: var(--red); font-weight: 900; }
+.dayline { position: absolute; top: 52px; bottom: 0; width: 2px; margin-left: -1px; background: var(--navy); opacity: 0.35; z-index: 1; pointer-events: none; }
 .g-row:hover .g-track { background-color: var(--row-hover); }
 .g-row:hover .g-gate { background: var(--row-hover); }
 .g-gate.cap { background: var(--cap-bg); color: var(--cap-ink); box-shadow: inset 4px 0 0 var(--cap-edge); padding-left: 14px; }
@@ -368,10 +374,6 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
   <div class="wrap">
 
     <form class="controls" id="controls" aria-label="조회 조건">
-      <div class="field f-date">
-        <label for="date">날짜</label>
-        <input type="date" id="date">
-      </div>
       <div class="field f-search">
         <label for="q">등록기호, 편명, 공항</label>
         <input type="search" id="q" placeholder="예: HL7612, KE652, BKK" autocomplete="off">
@@ -506,12 +508,13 @@ function nowMinutesFor(date) {
 }
 
 const RULES = { arrHold: 40, depHold: 80, maxPairGap: 1440 };
+const WIN = { before: 180, ahead: 1440 };   // 표시 구간: 지금부터 3시간 전 ~ 24시간 뒤 (분)
 
-function buildMock(date) {
+function buildMock(date, nowRel, usedRegs) {
   const r = mulberry32([...date].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7));
   const pick = arr => arr[Math.floor(r() * arr.length)];
   const wpick = () => { const tot = AIRLINES.reduce((s, a) => s + a.w, 0); let x = r() * tot; for (const a of AIRLINES) { if ((x -= a.w) < 0) return a; } return AIRLINES[0]; };
-  const used = new Set();
+  const used = usedRegs || new Set();
   const newReg = al => { let g, n = 0; do { g = al.reg(r); } while (used.has(g) && ++n < 200); used.add(g); return g; };
   const turns = {}, extras = [];
   GATES.forEach((gate, gi) => {
@@ -530,6 +533,7 @@ function buildMock(date) {
       let dd = da + (r() < 0.3 ? 5 * Math.floor(r() * 5) : 0);
       const arrS = t, depS = t + dur;
       if (depS + dd - (arrS + da) < 30) dd = arrS + da + 30 - depS;
+      if (depS + Math.max(dd, 0) >= DAY - 20) break;      // 데모 데이터: 하루 경계를 넘는 점유는 만들지 않음
       const reg = newReg(al);
       const mk = (dir, flight, apt, sched, est) => ({ dir, flight, reg, type, gate, apt, sched, est, actual: null });
       list.push({
@@ -552,7 +556,7 @@ function buildMock(date) {
     }
   });
   // 데모용 게이트 충돌 2건: 앞 항공기 출발 지연으로 다음 항공기 점유와 겹치게 만듭니다.
-  [[6, 2], [17, 3]].forEach(([gi, k0]) => {
+  [[6, 0], [17, 0], [41, 0]].forEach(([gi, k0]) => {
     const list = turns[GATES[gi]];
     for (let k = k0; k < list.length - 1; k++) {
       const a = list[k], b = list[k + 1];
@@ -567,7 +571,7 @@ function buildMock(date) {
   Object.values(turns).forEach(l => l.forEach(x => { if (x.arr) flights.push(x.arr); if (x.dep) flights.push(x.dep); }));
   extras.forEach(f => flights.push(f));
   // 실제 시각: 현재 시각까지 지난 항공편에만 반영
-  const now = nowMinutesFor(date);
+  const now = nowRel != null ? nowRel : nowMinutesFor(date);
   const jit = () => 5 * (Math.floor(r() * 3) - 1);
   flights.forEach(f => { const t = eff(f); if (t <= now) f.actual = Math.min(now, t + jit()); });
   return flights;
@@ -594,7 +598,7 @@ function buildOccupancies(flights) {
     list.forEach(f => {
       if (f.dir === "ARR") { if (pend) out.push(mkSingle(pend)); pend = f; return; }
       const linkable = pend && pend.gate === f.gate && eff(f) > eff(pend) && eff(f) - eff(pend) <= RULES.maxPairGap;
-      if (linkable && !otherBetween(pend, f)) { out.push(mkPair(pend, f)); pend = null; }
+      if (linkable && (!f.gate || !otherBetween(pend, f))) { out.push(mkPair(pend, f)); pend = null; }
       else if (linkable) { out.push(mkSingle(pend, true), mkSingle(f, true)); pend = null; }
       else { if (pend) { out.push(mkSingle(pend)); pend = null; } out.push(mkSingle(f)); }
     });
@@ -623,15 +627,36 @@ function isoToMin(date, iso) {
   return Math.round((Date.UTC(Y, M - 1, D, hh, mm) - Date.UTC(y, m - 1, d)) / 60000);
 }
 
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const t = new Date(y, m - 1, d + n);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+}
+
 const Api = {
-  async flights({ date }) {
-    if (CONFIG.useMock) return buildMock(date);
+  // 오늘 00:00 을 기준으로 한 분(minute) 값의 항공편 목록 (어제~내일)
+  async flights() {
+    const today = localToday();
+    if (CONFIG.useMock) {
+      const nd = new Date(), nowToday = nd.getHours() * 60 + nd.getMinutes();
+      const used = new Set(), out = [];
+      for (const off of [-1, 0, 1]) {
+        buildMock(addDays(today, off), nowToday - off * 1440, used).forEach(f => {
+          ["sched", "est", "actual"].forEach(k => { if (f[k] != null) f[k] += off * 1440; });
+          // 데모: 앞으로 2시간 이후의 일부 항공편은 게이트가 아직 배정되지 않은 것으로 만듭니다.
+          const h = [...f.reg].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
+          if (eff(f) > nowToday + 120 && Math.abs(h) % 6 === 0) f.gate = "";
+          out.push(f);
+        });
+      }
+      return out;
+    }
     const d = await loadDataFile();
     state.meta = d;
     return (d.flights || []).map(f => {
       if (f.aptName) CITY[f.apt] = f.aptName;
-      const sched = isoToMin(date, f.sched), est = isoToMin(date, f.est), actual = isoToMin(date, f.actual);
-      return { dir: f.dir, flight: f.flight, reg: f.reg || "", type: AIRCRAFT_NAMES[f.type] || f.type || "", gate: String(f.gate), apt: f.apt, sched, est: est !== sched ? est : null, actual };
+      const sched = isoToMin(today, f.sched), est = isoToMin(today, f.est), actual = isoToMin(today, f.actual);
+      return { dir: f.dir, flight: f.flight, reg: f.reg || "", type: AIRCRAFT_NAMES[f.type] || f.type || "", gate: f.gate ? String(f.gate) : "", apt: f.apt, sched, est: est !== sched ? est : null, actual };
     });
   }
 };
@@ -640,7 +665,7 @@ const Api = {
 /* ------------------------------------------------------------------ 화면 */
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, "0");
-const state = { date: localToday(), u: 12, q: "", items: [], now: -1, meta: null };
+const state = { u: 12, q: "", items: [], now: 0, win: { start: -180, end: 1440 }, winAbs: null, meta: null };
 const gantt = $("#gantt"), tip = $("#tip");
 
 function fmt(m) {
@@ -662,7 +687,8 @@ function analyze(items) {
     else it.st = it.dep.actual != null ? "done" : (now >= 0 && now >= it._s) ? "active" : "plan";
     (byGate[it.gate] = byGate[it.gate] || []).push(it);
   });
-  Object.values(byGate).forEach(list => {
+  Object.entries(byGate).forEach(([g, list]) => {
+    if (g === "") return;                 // 게이트 미배정은 겹침으로 보지 않음
     list.sort((a, b) => a._s - b._s);
     list.forEach((it, k) => {
       if (k > 0) {
@@ -676,64 +702,93 @@ function analyze(items) {
 
 function renderKpis(conflicts) {
   const hasNow = state.now >= 0 && state.now < DAY;
-  const occ = new Set(state.items.filter(i => i.st === "active").map(i => i.gate)).size;
+  const occ = new Set(state.items.filter(i => i.gate && i.st === "active").map(i => i.gate)).size;
   const delayed = state.items.filter(i => i.delay).length;
   const k = [
     { l: "점유 중 게이트", v: hasNow ? `${occ}` : "—", u: hasNow ? `/ ${GATES.length}` : "", n: hasNow ? "지금 항공기가 있는 게이트" : "오늘 날짜에서만 표시됩니다" },
-    { l: "배정 건수", v: state.items.length, u: "건", n: "선택한 날짜 기준" },
+    { l: "배정 건수", v: state.items.filter(i => i.gate).length, u: "건", n: "표시 구간 기준" },
     { l: "지연 항공편", v: delayed, u: "건", n: "예정 대비 15분 이상" },
     { l: "게이트 중첩", v: conflicts, u: "건", n: "점유 시간이 겹침", alert: conflicts > 0 }
   ];
   $("#kpis").innerHTML = k.map(x => `<div class="kpi ${x.alert ? "alert" : ""}"><div class="label">${x.l}</div><div class="value">${x.v}<small>${x.u}</small></div><div class="note">${x.n}</div></div>`).join("");
 }
 
+const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
+function dayLabelAt(m) {
+  const [y, mo, d] = localToday().split("-").map(Number);
+  const dt = new Date(y, mo - 1, d + Math.floor(m / 1440));
+  return `${dt.getMonth() + 1}/${dt.getDate()}(${WEEKDAY[dt.getDay()]})`;
+}
+
 function renderChart() {
-  const u = state.u;
+  const u = state.u, W = state.win, cols = (W.end - W.start) / STEP;
+  const mod = (a, n) => ((a % n) + n) % n;
   gantt.style.setProperty("--u", u + "px");
-  const cols = DAY / STEP;
-  let ticks = "", labels = "";
+  gantt.style.setProperty("--cols", cols);
+  gantt.style.setProperty("--hoff", mod(-W.start, 60) / STEP);     // 첫 정각 선까지의 칸 수
+  gantt.style.setProperty("--moff", mod(-W.start, 30) / STEP);
+  let ticks = "", labels = "", daylines = "";
   for (let i = 0; i <= cols; i++) {
-    const h = i % 12 === 0 ? 18 : i % 6 === 0 ? 12 : 6;
+    const m = W.start + i * STEP;
+    const h = mod(m, 60) === 0 ? 18 : mod(m, 30) === 0 ? 12 : 6;
     ticks += `<i class="tick" style="left:${i * u}px;height:${h}px"></i>`;
   }
-  for (let h = 0; h < 24; h++) {
-    labels += `<span class="hlabel" style="left:${h * 12 * u}px">${pad(h)}:00</span>`;
-    if (u >= 12) labels += `<span class="hlabel half" style="left:${(h * 12 + 6) * u}px">${pad(h)}:30</span>`;
+  for (let m = Math.ceil(W.start / 30) * 30; m <= W.end; m += 30) {
+    const isHour = mod(m, 60) === 0;
+    if (!isHour && u < 12) continue;
+    const x = ((m - W.start) / STEP) * u;
+    const isDay = mod(m, 1440) === 0;
+    const text = isDay ? dayLabelAt(m) : `${pad(Math.floor(mod(m, 1440) / 60))}:${pad(mod(m, 60))}`;
+    labels += `<span class="hlabel${isHour ? "" : " half"}${isDay ? " day" : ""}" style="left:${x}px">${text}</span>`;
+    if (isDay) daylines += `<div class="dayline" style="left:calc(var(--gw) + ${x}px)"></div>`;
   }
-  const hasNow = state.now >= 0 && state.now < DAY;
-  const nowX = (state.now / STEP) * u;
-  const flag = hasNow ? `<span class="nowflag" style="left:${nowX}px">${fmt(state.now)}</span>` : "";
+  const nowX = ((state.now - W.start) / STEP) * u;
+  const flag = `<span class="nowflag" style="left:${nowX}px">${fmt(state.now)}</span>`;
 
-  const byGate = {}; state.items.forEach((it, i) => { it._i = i; (byGate[it.gate] = byGate[it.gate] || []).push(it); });
-  const rows = GATES.map((g, idx) => {
+  const byGate = {}; state.items.forEach((it, i) => { it._i = i; if (it.gate) (byGate[it.gate] = byGate[it.gate] || []).push(it); });
+  let rows = GATES.map(g => {
     const bars = (byGate[g] || []).map(barHtml).join("");
     const grp = g === GROUP_BREAK_BEFORE ? " grp" : "";
     return `<div class="g-row${grp}">${gateCell(g)}<div class="g-track">${bars}</div></div>`;
   }).join("");
 
+  // 게이트 미배정 줄: 겹치는 항공편은 위아래로 쌓아서 보여줍니다.
+  const un = state.items.filter(it => !it.gate).sort((a, b) => a._s - b._s);
+  const laneEnd = [];
+  un.forEach(it => {
+    let k = laneEnd.findIndex(e => e <= it._s);
+    if (k < 0) { k = laneEnd.length; laneEnd.push(0); }
+    laneEnd[k] = it._e; it.ulane = k;
+  });
+  const unH = Math.max(1, laneEnd.length) * 30 + 6;
+  rows += `<div class="g-row un" style="height:${unH}px"><div class="g-gate un"><span>미배정</span><small>${un.length}건</small></div><div class="g-track">${un.map(barHtml).join("")}</div></div>`;
+
   gantt.innerHTML = `<div class="g-inner">
     <div class="g-head"><div class="g-corner"><b>게이트</b>눈금 5분</div><div class="g-axis">${ticks}${labels}${flag}</div></div>
     ${rows}
-    ${hasNow ? `<div class="nowline" style="left:calc(var(--gw) + ${nowX}px)"></div>` : ""}
+    ${daylines}
+    <div class="nowline" style="left:calc(var(--gw) + ${nowX}px)"></div>
   </div>`;
   applySearch();
 }
 
 function barHtml(it) {
-  const u = state.u;
-  const s = Math.max(it._s, 0), e = Math.min(it._e, DAY);
-  if (e <= 0 || s >= DAY) return "";
-  const left = (s / STEP) * u, width = Math.max(((e - s) / STEP) * u - 1, u * 2);
-  const half = it.lane != null;
+  const u = state.u, W = state.win;
+  if (it._e <= W.start || it._s >= W.end) return "";
+  const s = Math.max(it._s, W.start), e = Math.min(it._e, W.end);
+  const left = ((s - W.start) / STEP) * u, width = Math.max(((e - s) / STEP) * u - 1, u * 2);
+  const un = !it.gate;
+  const half = it.lane != null || un;
   const single = !(it.arr && it.dep);
-  const cls = ["bar", it.st, it.delay ? "delay" : "", it.conflict ? "conflict" : "", single ? "single" : "", half ? `half lane${it.lane}` : "", it._s < 0 ? "clipL" : "", it._e > DAY ? "clipR" : ""].join(" ");
+  const cls = ["bar", it.st, it.delay ? "delay" : "", it.conflict ? "conflict" : "", single ? "single" : "", half ? (un ? "half un" : `half lane${it.lane}`) : "", it._s < W.start ? "clipL" : "", it._e > W.end ? "clipR" : ""].join(" ");
   const flights = it.arr && it.dep ? `${it.arr.flight} → ${it.dep.flight}` : (it.arr || it.dep).flight;
   const route = it.arr && it.dep ? `${it.arr.apt} → ${it.dep.apt}` : it.arr ? `${it.arr.apt} → ICN` : `ICN → ${it.dep.apt}`;
   const hay = [it.reg, it.type, it.arr && it.arr.flight, it.dep && it.dep.flight, it.arr && it.arr.apt, it.dep && it.dep.apt, it.arr && CITY[it.arr.apt], it.dep && CITY[it.dep.apt]].filter(Boolean).join(" ").toLowerCase().replace(/\s+/g, " ");
   let tail = "";
   if (it.st === "active" && state.now > s && state.now < e) tail = `<i class="tail" style="left:${((state.now - s) / STEP) * u}px"></i>`;
-  const label = `${it.reg} ${it.type}, 게이트 ${it.gate}, ${fmt(it._s)}부터 ${fmt(it._e)}까지`;
-  return `<button class="${cls}" style="left:${left}px;width:${width}px" data-i="${it._i}" data-hay="${esc(hay)}" aria-label="${esc(label)}">
+  const label = `${it.reg} ${it.type}, 게이트 ${it.gate || "미배정"}, ${fmt(it._s)}부터 ${fmt(it._e)}까지`;
+  const top = un ? `;top:${2 + it.ulane * 30}px` : "";
+  return `<button class="${cls}" style="left:${left}px;width:${width}px${top}" data-i="${it._i}" data-hay="${esc(hay)}" aria-label="${esc(label)}">
     <div class="b1"><b>${esc(it.reg)}</b><span>${esc(it.type)}</span></div>
     <div class="b2">${flights}<span class="rt">${route}</span></div>
     <div class="b3">${route}</div>${tail}</button>`;
@@ -761,12 +816,14 @@ function tipHtml(it) {
     : it.towed ? (it.arr
       ? `같은 항공기의 출발편이 있지만 그 사이에 다른 항공기가 배정되어 견인된 것으로 보고, 도착 시각부터 ${RULES.arrHold}분으로 표시합니다.`
       : `같은 항공기의 도착편이 있지만 그 사이에 다른 항공기가 배정되어 견인되었다가 돌아온 것으로 보고, 출발 시각 ${RULES.depHold}분 전부터로 표시합니다.`)
+    : !it.gate ? ""
     : it.arr ? `같은 등록기호의 출발편이 이 게이트에 없어 도착 시각부터 ${RULES.arrHold}분으로 표시합니다.`
     : `같은 등록기호의 도착편이 이 게이트에 없어 출발 시각 ${RULES.depHold}분 전부터로 표시합니다.`;
   return `<div class="t-head"><b>${esc(it.reg)}</b><span>${esc(it.type)}<span class="chip ${it.st}">${st}</span></span></div>
-    <div class="t-meta">게이트 ${it.gate} 점유 ${fmt(it._s)} ~ ${fmt(it._e)} (${it._e - it._s}분)</div>
+    <div class="t-meta">게이트 ${it.gate || "미배정"} 점유 ${fmt(it._s)} ~ ${fmt(it._e)} (${it._e - it._s}분)</div>
     <table><thead><tr><th></th><th>예정</th><th>변경</th><th>실제</th></tr></thead><tbody>${it.arr ? legRow("도착", it.arr) : ""}${it.dep ? legRow("출발", it.dep) : ""}</tbody></table>
     ${kindNote ? `<div class="t-foot" style="border-top:0;margin-top:4px;padding-top:0">${kindNote}</div>` : ""}
+    ${!it.gate ? `<div class="t-foot" style="border-top:0;margin-top:4px;padding-top:0">게이트가 아직 배정되지 않은 항공편입니다.</div>` : ""}
     ${it.conflict ? `<div class="t-warn">같은 게이트의 앞뒤 항공기와 점유 시간이 겹칩니다.</div>` : ""}
     <div class="t-foot">막대 구간은 실제 시각이 있으면 실제, 없으면 변경, 변경도 없으면 예정 시각 기준입니다.</div>`;
 }
@@ -799,22 +856,28 @@ document.addEventListener("click", e => { if (!e.target.closest(".bar")) hideTip
 
 /* 스크롤 */
 function scrollToNow(smooth) {
-  const u = state.u;
-  const target = (state.now >= 0 && state.now < DAY) ? (state.now / STEP) * u : (360 / STEP) * u;
+  const target = ((state.now - state.win.start) / STEP) * state.u;
   gantt.scrollTo({ left: Math.max(0, target - gantt.clientWidth * 0.3), behavior: smooth ? "smooth" : "auto" });
 }
 
-/* 불러오기 */
+/* 불러오기: 표시 구간은 항상 지금부터 3시간 전 ~ 24시간 뒤입니다. */
 async function load(first) {
   try {
-    state.now = nowMinutesFor(state.date);
-    const flights = await Api.flights({ date: state.date });
-    state.items = buildOccupancies(flights).filter(it => GATES.includes(it.gate) && it._e > 0 && it._s < DAY);
+    const nd = new Date();
+    state.now = nd.getHours() * 60 + nd.getMinutes();
+    const midAbs = new Date(nd.getFullYear(), nd.getMonth(), nd.getDate()).getTime() / 60000;     // 오늘 00:00 (epoch 분)
+    const startAbs = Math.floor(Date.now() / 60000 / STEP) * STEP - WIN.before;                     // 표시 시작 (epoch 분)
+    const shift = state.winAbs != null ? startAbs - state.winAbs : 0;
+    state.winAbs = startAbs;
+    state.win = { start: startAbs - midAbs, end: startAbs - midAbs + WIN.before + WIN.ahead };
+    const flights = await Api.flights();
+    state.items = buildOccupancies(flights).filter(it => (it.gate === "" || GATES.includes(it.gate)) && it._e > state.win.start && it._s < state.win.end);
     const conflicts = analyze(state.items);
     renderKpis(conflicts);
     const keepX = gantt.scrollLeft, keepY = gantt.scrollTop;
     renderChart();
-    if (first) scrollToNow(false); else { gantt.scrollLeft = keepX; gantt.scrollTop = keepY; }
+    if (first) { gantt.scrollLeft = 0; gantt.scrollTop = 0; }
+    else { gantt.scrollLeft = Math.max(0, keepX - (shift / STEP) * state.u); gantt.scrollTop = keepY; }     // 표시 구간이 밀린 만큼 보정
     updateStamp();
   } catch (err) {
     gantt.innerHTML = `<div class="empty">게이트 데이터를 불러오지 못했습니다. ${esc(err.message || "")} 연결 상태를 확인한 뒤 다시 조회해 주세요.</div>`;
@@ -829,7 +892,6 @@ function updateStamp() {
     t = new Date(Y, M - 1, D, hh, mm);
     every = state.meta.intervalMin || 5;
     stale = (Date.now() - t.getTime()) > Math.max(15, every * 3) * 60000;
-    if (state.meta.range) { const dt = $("#date"); dt.min = state.meta.range.from; dt.max = state.meta.range.to; }
   }
   const hm = `${pad(t.getHours())}:${pad(t.getMinutes())}`;
   el.textContent = stale ? `데이터 갱신이 지연되고 있습니다. 마지막 갱신 ${hm}` : `마지막 갱신 ${hm} (${every}분단위 업데이트)`;
@@ -837,12 +899,6 @@ function updateStamp() {
 }
 
 /* 컨트롤 */
-(function initDate() {
-  const t = new Date(), f = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const lo = new Date(t); lo.setDate(t.getDate() - 3); const hi = new Date(t); hi.setDate(t.getDate() + 6);
-  const el = $("#date"); el.value = state.date; el.min = f(lo); el.max = f(hi);
-})();
-$("#date").addEventListener("change", e => { if (e.target.value) { state.date = e.target.value; load(true); } });
 $("#q").addEventListener("input", e => { state.q = e.target.value; applySearch(); });
 $("#controls").addEventListener("submit", e => {
   e.preventDefault(); state.q = $("#q").value;

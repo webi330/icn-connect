@@ -220,10 +220,10 @@ def normalize(items, direction, cfg):
     for it in items:
         if tvals and pick(it, "terminal").upper() not in tvals:
             continue
-        gate = re.sub(r"\D", "", pick(it, "gate"))      # 236R 같은 값은 숫자만 사용
+        gate = re.sub(r"\D", "", pick(it, "gate")) or re.sub(r"\D", "", pick(it, "stand"))   # 게이트가 비어 있으면 주기장 값 사용, 236R 같은 값은 숫자만 사용
         sched = parse_dt(pick(it, "sched"))
-        if not gate or not sched:
-            continue
+        if not sched:
+            continue                                   # 게이트가 없는 항공편도 '미배정' 줄에 보여주기 위해 남겨 둡니다.
         est = parse_dt(pick(it, "est"))
         actual = parse_dt(pick(it, "actual"))
         if not actual and pick(it, "remark") in done_remarks:
@@ -332,7 +332,8 @@ def run_sync(cfg):
     write_data_js(out_path(cfg), payload)
     save_state(state)
     no_reg = sum(1 for f in flights if not f["reg"])
-    log("완료: T2 항공편 %d건 (등록기호 없음 %d건), 오늘 호출 %d/%d회" % (len(flights), no_reg, budget.calls, budget.limit))
+    no_gate = sum(1 for f in flights if not f["gate"])
+    log("완료: T2 항공편 %d건 (등록기호 없음 %d건, 게이트 미배정 %d건), 오늘 호출 %d/%d회" % (len(flights), no_reg, no_gate, budget.calls, budget.limit))
     if flights and no_reg == len(flights):
         log("경고: 등록기호가 모두 비어 있습니다. --probe 로 필드 이름을 확인해 주세요.")
     if not flights:
@@ -374,6 +375,20 @@ def run_probe(cfg):
         diff = [(pick(i, "flight"), pick(i, "gate"), pick(i, "stand")) for i in items if pick(i, "gate") != pick(i, "stand")]
         print("게이트와 주기장이 다른 항목: %d건, 예: %s" % (len(diff), diff[:6]))
         print("게이트 없음: %d건 / 등록기호 없음: %d건" % (sum(1 for i in items if not pick(i, "gate")), sum(1 for i in items if not pick(i, "reg"))))
+        now = datetime.now()
+
+        def mins(i):
+            t = parse_dt(pick(i, "est") or pick(i, "sched"))
+            return None if not t else (datetime.strptime(t, "%Y-%m-%dT%H:%M") - now).total_seconds() / 60
+
+        print("지금(%s) 기준 앞으로 남은 항공편의 게이트/주기장 배정 현황:" % now.strftime("%H:%M"))
+        for lo, hi, label in ((0, 120, "0~2시간 뒤"), (120, 240, "2~4시간 뒤"), (240, 480, "4~8시간 뒤"), (480, 100000, "8시간 이후")):
+            sel = [i for i in items if mins(i) is not None and lo <= mins(i) < hi]
+            print("  %-10s 전체 %3d건 / 게이트 있음 %3d / 주기장 있음 %3d" % (label, len(sel), sum(1 for i in sel if pick(i, "gate")), sum(1 for i in sel if pick(i, "stand"))))
+        budget.use()
+        tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y%m%d")
+        items2, total2 = extract_items(call_api(cfg, op, dict(params, searchDate=tomorrow)))
+        print("내일(%s): 전체 %d건 / 게이트 있음 %d / 주기장 있음 %d" % (tomorrow, len(items2), sum(1 for i in items2 if pick(i, "gate")), sum(1 for i in items2 if pick(i, "stand"))))
     print("\n저장된 파일: probe_arrivals.json, probe_departures.json (인증키는 들어 있지 않습니다)")
 
 
