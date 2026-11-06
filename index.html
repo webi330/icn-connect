@@ -508,7 +508,7 @@ function nowMinutesFor(date) {
 }
 
 const RULES = { arrHold: 40, depHold: 80, maxPairGap: 1440 };
-const WIN = { before: 180, ahead: 1440 };   // 표시 구간: 지금부터 3시간 전 ~ 24시간 뒤 (분)
+const WIN = { before: 360, ahead: 1440 };   // 표시 구간: 지금부터 6시간 전 ~ 24시간 뒤 (분)
 
 function buildMock(date, nowRel, usedRegs) {
   const r = mulberry32([...date].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7));
@@ -753,7 +753,9 @@ function renderChart() {
   }).join("");
 
   // 게이트 미배정 줄: 겹치는 항공편은 위아래로 쌓아서 보여줍니다.
-  const un = state.items.filter(it => !it.gate).sort((a, b) => a._s - b._s);
+  // 미배정 줄에는 오늘(조회 시점의 날짜) 항공편만 보여줍니다.
+  const isToday = it => [it.arr, it.dep].some(l => l && eff(l) >= 0 && eff(l) < DAY);
+  const un = state.items.filter(it => !it.gate && isToday(it)).sort((a, b) => a._s - b._s);
   const laneEnd = [];
   un.forEach(it => {
     let k = laneEnd.findIndex(e => e <= it._s);
@@ -761,7 +763,7 @@ function renderChart() {
     laneEnd[k] = it._e; it.ulane = k;
   });
   const unH = Math.max(1, laneEnd.length) * 30 + 6;
-  rows += `<div class="g-row un" style="height:${unH}px"><div class="g-gate un"><span>미배정</span><small>${un.length}건</small></div><div class="g-track">${un.map(barHtml).join("")}</div></div>`;
+  rows += `<div class="g-row un" style="height:${unH}px"><div class="g-gate un"><span>미배정</span><small>오늘 ${un.length}건</small></div><div class="g-track">${un.map(barHtml).join("")}</div></div>`;
 
   gantt.innerHTML = `<div class="g-inner">
     <div class="g-head"><div class="g-corner"><b>게이트</b>눈금 5분</div><div class="g-axis">${ticks}${labels}${flag}</div></div>
@@ -775,6 +777,7 @@ function renderChart() {
 function barHtml(it) {
   const u = state.u, W = state.win;
   if (it._e <= W.start || it._s >= W.end) return "";
+  if (!it.gate && it.ulane == null) return "";
   const s = Math.max(it._s, W.start), e = Math.min(it._e, W.end);
   const left = ((s - W.start) / STEP) * u, width = Math.max(((e - s) / STEP) * u - 1, u * 2);
   const un = !it.gate;
