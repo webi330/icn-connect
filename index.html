@@ -194,21 +194,49 @@ main { padding: 24px 0 56px; }
 }
 :root[data-theme="dark"] { --cap-bg: #1a4357; --cap-bg-hover: #215269; --cap-ink: #cdeaf6; --cap-edge: #4aa6cc; }
 
+/* 항공사별 막대 색 (DL, KE·OZ, LJ·BX·RS, 기타) 과 출발 완료 색 */
+:root {
+  --al-dl-fill: #003366;  --al-dl-ink: #ffffff;  --al-dl-line: #003366;  --al-dl-edge: #4a9be8;  --al-dl-hatch: rgba(255, 255, 255, 0.30);
+  --al-sky-fill: #87ceeb; --al-sky-ink: #0b2a3d; --al-sky-line: #5fb0d9; --al-sky-edge: #1c6fa3; --al-sky-hatch: rgba(0, 0, 0, 0.14);
+  --al-grn-fill: #d3eeb0; --al-grn-ink: #1f3b0f; --al-grn-line: #a3cf75; --al-grn-edge: #5f9a2a; --al-grn-hatch: rgba(0, 0, 0, 0.12);
+  --al-oth-fill: transparent; --al-oth-ink: var(--ink); --al-oth-line: #9aa7b6; --al-oth-edge: #44525f; --al-oth-hatch: rgba(0, 0, 0, 0.10);
+  --done-fill: #e4e7ec; --done-ink: #667385; --done-line: #cfd5dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --al-dl-fill: #1f5fae;  --al-dl-ink: #ffffff;  --al-dl-line: #1f5fae;  --al-dl-edge: #8fc1ff;  --al-dl-hatch: rgba(255, 255, 255, 0.28);
+    --al-sky-fill: #2d86b8; --al-sky-ink: #ffffff; --al-sky-line: #2d86b8; --al-sky-edge: #8ad0f2; --al-sky-hatch: rgba(255, 255, 255, 0.28);
+    --al-grn-fill: #86b556; --al-grn-ink: #10200a; --al-grn-line: #86b556; --al-grn-edge: #c9ec9e; --al-grn-hatch: rgba(0, 0, 0, 0.16);
+    --al-oth-fill: transparent; --al-oth-ink: var(--ink); --al-oth-line: #5b6a7c; --al-oth-edge: #b4c0cf; --al-oth-hatch: rgba(255, 255, 255, 0.12);
+    --done-fill: #243244; --done-ink: #8796a8; --done-line: #324358;
+  }
+}
+:root[data-theme="dark"] {
+  --al-dl-fill: #1f5fae;  --al-dl-ink: #ffffff;  --al-dl-line: #1f5fae;  --al-dl-edge: #8fc1ff;  --al-dl-hatch: rgba(255, 255, 255, 0.28);
+  --al-sky-fill: #2d86b8; --al-sky-ink: #ffffff; --al-sky-line: #2d86b8; --al-sky-edge: #8ad0f2; --al-sky-hatch: rgba(255, 255, 255, 0.28);
+  --al-grn-fill: #86b556; --al-grn-ink: #10200a; --al-grn-line: #86b556; --al-grn-edge: #c9ec9e; --al-grn-hatch: rgba(0, 0, 0, 0.16);
+  --al-oth-fill: transparent; --al-oth-ink: var(--ink); --al-oth-line: #5b6a7c; --al-oth-edge: #b4c0cf; --al-oth-hatch: rgba(255, 255, 255, 0.12);
+  --done-fill: #243244; --done-ink: #8796a8; --done-line: #324358;
+}
+
 /* Legend */
 .legend { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
 #gates > header { padding-bottom: 16px; }
 #gates > header > div:first-child { order: 2; white-space: nowrap; }
 .legend span { display: inline-flex; align-items: center; gap: 8px; }
 .sw { width: 26px; height: 14px; border-radius: 2px; border: 1.5px solid transparent; display: inline-block; position: relative; }
-.sw.done { background: var(--bar-done-bg); border-color: var(--bar-done-edge); }
-.sw.act { background: var(--bar-act-bg); }
-.sw.plan { background: var(--bar-plan-bg); border-color: var(--bar-plan-edge); }
-.sw.delay { background: var(--bar-plan-bg); border-color: var(--bar-plan-edge); box-shadow: inset 0 -3px 0 var(--red); }
-.sw.conf { background: var(--bar-plan-bg); border-color: var(--red); }
-.sw.single { background: var(--bar-plan-bg); border: 1.5px dashed var(--bar-plan-edge); }
+.sw.dl { background: var(--al-dl-fill); border-color: var(--al-dl-line); }
+.sw.sky { background: var(--al-sky-fill); border-color: var(--al-sky-line); }
+.sw.grn { background: var(--al-grn-fill); border-color: var(--al-grn-line); }
+.sw.oth { background: transparent; border-color: var(--al-oth-line); }
+.sw.done { background: var(--done-fill); border-color: var(--done-line); }
+.sw.act { background: var(--al-sky-fill); border: 3px solid var(--al-sky-edge); }
+.sw.delay { background: var(--al-sky-fill); border-color: var(--al-sky-line); box-shadow: inset 0 -3px 0 var(--red); }
+.sw.conf { background: var(--al-sky-fill); border-color: var(--red); }
+.sw.single { background: var(--al-sky-fill); border: 1.5px dashed var(--al-sky-line); }
 .sw.cap { background: var(--cap-bg); border-color: var(--cap-edge); box-shadow: inset 4px 0 0 var(--cap-edge); }
 .legstar { font-size: 18px; font-weight: 900; line-height: 1; color: var(--cap-ink); width: 26px; text-align: center; }
-.sw.est { background: var(--bar-act-bg); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.30) 0 3px, transparent 3px 6px); }
+.sw.est { background: var(--al-sky-fill); border: 3px solid var(--al-sky-edge); background-image: repeating-linear-gradient(135deg, var(--al-sky-hatch) 0 3px, transparent 3px 6px); }
 
 /* Gantt */
 .gantt { position: relative; overflow: auto; max-height: min(74vh, 960px); border-top: 1px solid var(--line); background: var(--surface); }
@@ -270,17 +298,21 @@ main { padding: 24px 0 56px; }
 .bar.half .b3 { display: none; }
 .bar.half .rt { display: inline; margin-left: 8px; }
 .bar.lane0 { top: 2px; } .bar.lane1 { top: 31px; }
-.bar.done { background: var(--bar-done-bg); color: var(--bar-done-ink); border-color: var(--bar-done-edge); }
-.bar.active { background: var(--bar-act-bg); color: var(--bar-act-ink); }
-.bar.plan { background: var(--bar-plan-bg); color: var(--bar-plan-ink); border-color: var(--bar-plan-edge); }
+.bar { background: var(--fill, transparent); color: var(--ink-c, var(--ink)); border-color: var(--line-c, var(--line)); }
+.bar.al-dl  { --fill: var(--al-dl-fill);  --ink-c: var(--al-dl-ink);  --line-c: var(--al-dl-line);  --edge-c: var(--al-dl-edge);  --hatch: var(--al-dl-hatch); }
+.bar.al-sky { --fill: var(--al-sky-fill); --ink-c: var(--al-sky-ink); --line-c: var(--al-sky-line); --edge-c: var(--al-sky-edge); --hatch: var(--al-sky-hatch); }
+.bar.al-grn { --fill: var(--al-grn-fill); --ink-c: var(--al-grn-ink); --line-c: var(--al-grn-line); --edge-c: var(--al-grn-edge); --hatch: var(--al-grn-hatch); }
+.bar.al-oth { --fill: var(--al-oth-fill); --ink-c: var(--al-oth-ink); --line-c: var(--al-oth-line); --edge-c: var(--al-oth-edge); --hatch: var(--al-oth-hatch); }
+.bar.done { --fill: var(--done-fill); --ink-c: var(--done-ink); --line-c: var(--done-line); --edge-c: var(--done-line); }
+.bar.active { border-width: 3px; border-color: var(--edge-c); }
 .bar.delay { box-shadow: inset 0 -3px 0 var(--red); }
 .bar.conflict { border-color: var(--red); border-width: 2px; }
+.bar.active.conflict { border-width: 3px; }
 .bar.clipL { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left-style: dashed; }
 .bar.clipR { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-style: dashed; }
-.bar.single { border-style: dashed; }
-.bar.single.active { border-color: rgba(255, 255, 255, 0.55); }
+.bar.single:not(.active) { border-style: dashed; }
 .bar.dim { opacity: 0.18; }
-.tail { position: absolute; top: 0; bottom: 0; right: 0; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.28) 0 3px, transparent 3px 6px); pointer-events: none; }
+.tail { position: absolute; top: 0; bottom: 0; right: 0; background-image: repeating-linear-gradient(135deg, var(--hatch, rgba(0,0,0,.12)) 0 3px, transparent 3px 6px); pointer-events: none; }
 .empty { padding: 36px 24px; color: var(--muted); text-align: center; }
 
 /* Tooltip */
@@ -401,15 +433,18 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
           <div class="sub" id="gSub"><span id="hitsInline"></span></div>
         </div>
         <div class="legend" aria-label="범례">
+          <span><i class="sw dl"></i>DL</span>
+          <span><i class="sw sky"></i>KE·OZ</span>
+          <span><i class="sw grn"></i>LJ·BX·RS</span>
+          <span><i class="sw oth"></i>기타 항공사</span>
           <span><i class="sw done"></i>출발 완료</span>
-          <span><i class="sw act"></i>점유 중</span>
+          <span><i class="sw act"></i>점유 중 (굵은 테두리)</span>
           <span><i class="sw est"></i>점유 중 예상 구간</span>
-          <span><i class="sw plan"></i>예정</span>
           <span><i class="sw delay"></i>지연 항공편 (예정 대비 15분 이상)</span>
           <span><i class="sw conf"></i>게이트 중첩</span>
           <span><i class="sw cap"></i>A350-900 주기 가능 게이트</span>
           <span><b class="legstar">*</b>A350-1000도 주기 가능</span>
-          <span><i class="sw single"></i>연결되지 않은 항공편 (도착 후 40분, 출발 80분 전)</span>
+          <span><i class="sw single"></i>소산 항공편 (도착 후 40분, 출발 80분 전)</span>
         </div>
       </header>
       <div class="gantt" id="gantt" tabindex="0" aria-label="T2 게이트별 점유 현황 차트. 방향키로 스크롤합니다."></div>
@@ -492,7 +527,11 @@ const AIRLINES = [
   { c: "AF", w: 1, reg: r => "F-H" + letters(r, 3), fleet: [["B777-300ER", 1]], dest: ["CDG"] },
   { c: "KL", w: 1, reg: r => "PH-B" + letters(r, 2), fleet: [["B787-10", 1]], dest: ["AMS"] },
   { c: "GA", w: 1, reg: r => "PK-G" + letters(r, 2), fleet: [["A330-300", 1]], dest: ["CGK", "DPS"] },
-  { c: "MF", w: 1, reg: r => "B-" + (1000 + Math.floor(r() * 8999)), fleet: [["B737-800", 0]], dest: ["XMN"] }
+  { c: "MF", w: 1, reg: r => "B-" + (1000 + Math.floor(r() * 8999)), fleet: [["B737-800", 0]], dest: ["XMN"] },
+  { c: "OZ", w: 3, reg: r => "HL" + (7700 + Math.floor(r() * 300)), mix: true, fleet: [["A350-900", 1], ["A330-300", 1], ["A321neo", 0]], dest: ["NRT", "KIX", "BKK", "SIN", "HKG", "FRA", "LAX"] },
+  { c: "LJ", w: 3, reg: r => "HL" + (8200 + Math.floor(r() * 100)), fleet: [["B737-800", 0], ["B777-300ER", 1]], dest: ["NRT", "KIX", "DAD", "BKK"] },
+  { c: "BX", w: 1, reg: r => "HL" + (8000 + Math.floor(r() * 100)), fleet: [["A321neo", 0]], dest: ["KIX", "DAD", "BKK"] },
+  { c: "RS", w: 1, reg: r => "HL" + (8100 + Math.floor(r() * 100)), fleet: [["A321neo", 0]], dest: ["NRT", "DAD"] }
 ];
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -713,6 +752,13 @@ function renderKpis(conflicts) {
   $("#kpis").innerHTML = k.map(x => `<div class="kpi ${x.alert ? "alert" : ""}"><div class="label">${x.l}</div><div class="value">${x.v}<small>${x.u}</small></div><div class="note">${x.n}</div></div>`).join("");
 }
 
+/* 막대 색: 편명 앞 2글자(항공사 코드)로 정합니다. 표에 없는 항공사는 투명(al-oth)입니다. */
+const AIRLINE_CLASS = { DL: "al-dl", KE: "al-sky", OZ: "al-sky", LJ: "al-grn", BX: "al-grn", RS: "al-grn" };
+function airlineClass(it) {
+  const f = String((it.arr || it.dep).flight || "").slice(0, 2).toUpperCase();
+  return AIRLINE_CLASS[f] || "al-oth";
+}
+
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 function dayLabelAt(m) {
   const [y, mo, d] = localToday().split("-").map(Number);
@@ -783,7 +829,7 @@ function barHtml(it) {
   const un = !it.gate;
   const half = it.lane != null || un;
   const single = !(it.arr && it.dep);
-  const cls = ["bar", it.st, it.delay ? "delay" : "", it.conflict ? "conflict" : "", single ? "single" : "", half ? (un ? "half un" : `half lane${it.lane}`) : "", it._s < W.start ? "clipL" : "", it._e > W.end ? "clipR" : ""].join(" ");
+  const cls = ["bar", airlineClass(it), it.st, it.delay ? "delay" : "", it.conflict ? "conflict" : "", single ? "single" : "", half ? (un ? "half un" : `half lane${it.lane}`) : "", it._s < W.start ? "clipL" : "", it._e > W.end ? "clipR" : ""].join(" ");
   const flights = it.arr && it.dep ? `${it.arr.flight} → ${it.dep.flight}` : (it.arr || it.dep).flight;
   const route = it.arr && it.dep ? `${it.arr.apt} → ${it.dep.apt}` : it.arr ? `${it.arr.apt} → ICN` : `ICN → ${it.dep.apt}`;
   const hay = [it.reg, it.type, it.arr && it.arr.flight, it.dep && it.dep.flight, it.arr && it.arr.apt, it.dep && it.dep.apt, it.arr && CITY[it.arr.apt], it.dep && CITY[it.dep.apt]].filter(Boolean).join(" ").toLowerCase().replace(/\s+/g, " ");
