@@ -415,6 +415,43 @@ body.view-conn { padding-right: 0 !important; }
 .cp-empty { padding: 28px 24px; color: var(--muted); text-align: center; }
 @media (max-width: 640px) { .cp-form { grid-template-columns: 1fr; } .cp-card, .cp-app { margin-top: -40px; } }
 
+/* Connection Planner: 환승 연결 현황 */
+.cx-title { margin: 0; padding: 14px 0; font-size: 20px; }
+.cx-form { padding: 8px 24px 20px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 220px 150px minmax(240px, 1fr); gap: 0 16px; align-items: start; }
+.cx-form label { display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin: 12px 0 6px; }
+.cx-form input { width: 100%; height: 46px; padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-bottom: 2px solid var(--muted); border-radius: 3px; }
+.cx-form input[type="file"] { padding: 9px 10px; }
+.cx-form input:focus { border-bottom-color: var(--red); outline: none; }
+.cx-form input:focus-visible { outline: 3px solid var(--info); outline-offset: 2px; }
+.cx-flight { display: flex; }
+.cx-prefix { display: flex; align-items: center; padding: 0 14px; height: 46px; background: var(--band); color: #fff; font-weight: 900; border-radius: 3px 0 0 3px; letter-spacing: 0.04em; }
+.cx-flight input { border-radius: 0 3px 3px 0; }
+.cx-wide { grid-column: 1 / -1; }
+.cx-preview { margin-top: 10px; font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+.cx-preview b { color: var(--ink); }
+.cx-actions { display: flex; gap: 10px; margin-top: 4px; }
+.cx-rec { border-top: 1px solid var(--line); }
+.cx-rec:first-child { border-top: 0; }
+.cx-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 16px 24px 8px; }
+.cx-head h3 { margin: 0; font-size: 19px; }
+.cx-meta { font-size: 13px; color: var(--muted); }
+.cx-sum { padding: 0 24px 10px; font-size: 14px; font-weight: 700; }
+.cx-allbar { display: flex; justify-content: flex-end; padding: 10px 24px 0; font-size: 13px; color: var(--muted); }
+.cx-allbar label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.cx-badge { display: inline-block; padding: 2px 10px; border-radius: 3px; font-weight: 900; font-size: 12.5px; white-space: nowrap; }
+.cx-mis { background: var(--red); color: #fff; }
+.cx-chk { background: #ffd84d; color: #3d2f00; }
+.cx-cover { background: var(--cx-cover-bg); color: var(--cx-cover-ink); }
+.cx-na { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+tr.cx-row-mis td:first-child { box-shadow: inset 4px 0 0 var(--red); }
+tr.cx-row-chk td:first-child { box-shadow: inset 4px 0 0 #ffd84d; }
+tr.cx-row-cover td:first-child { box-shadow: inset 4px 0 0 var(--cx-cover-bg); }
+.cx-table td small { color: var(--muted); }
+:root { --cx-cover-bg: #cfe3f7; --cx-cover-ink: #0b2a4d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cx-cover-bg: #25476b; --cx-cover-ink: #dbeaff; } }
+:root[data-theme="dark"] { --cx-cover-bg: #25476b; --cx-cover-ink: #dbeaff; }
+@media (max-width: 760px) { .cx-form { grid-template-columns: 1fr; } .cx-head, .cx-sum, .cx-allbar { padding-left: 16px; padding-right: 16px; } }
+
 footer { background: var(--band); color: var(--band-muted); font-size: 13px; }
 footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
@@ -539,34 +576,35 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
 
     <section class="panel cp-app" id="cpApp" hidden>
       <div class="cp-bar">
-        <div class="cp-tabs" role="tablist" aria-label="Item type">
-          <button type="button" role="tab" data-kind="rule" aria-selected="true">Rules</button>
-          <button type="button" role="tab" data-kind="metric" aria-selected="false">Transfer metrics</button>
-        </div>
+        <h2 class="cx-title">Please update the arrival flight connection details</h2>
         <div class="cp-user">
           <span id="cpUser"></span>
           <button type="button" class="btn ghost small" id="cpRefresh">Refresh</button>
           <button type="button" class="btn ghost small" id="cpSignOut">Sign out</button>
         </div>
       </div>
-      <div class="cp-note">Items are deleted automatically 24 hours after they are added. Editing an item does not extend this time.</div>
-      <form class="cp-form" id="cpForm" autocomplete="off">
-        <div><label for="cpTitle">Title</label><input id="cpTitle" maxlength="200" required></div>
-        <div><label for="cpValue">Value</label><input id="cpValue" maxlength="200"></div>
-        <div><label for="cpUnit">Unit</label><input id="cpUnit" maxlength="30"></div>
-        <div class="full"><label for="cpNote">Note</label><textarea id="cpNote" maxlength="4000"></textarea></div>
-        <div class="full cp-err" id="cpErr" role="alert"></div>
-        <div class="full cp-actions">
-          <button class="btn" type="submit" id="cpSubmit">Add</button>
-          <button class="btn ghost" type="button" id="cpCancel" hidden>Cancel edit</button>
+      <div class="cp-note">Details are discarded automatically 24 hours after they are updated. Only the recognized numbers are saved, not the attached file.</div>
+      <form class="cx-form" id="cxForm" autocomplete="off">
+        <div>
+          <label for="cxFlight">Arrival flight</label>
+          <div class="cx-flight"><span class="cx-prefix">DL</span><input id="cxFlight" maxlength="5" placeholder="1234" required></div>
+        </div>
+        <div>
+          <label for="cxEta">ETA (HH:MM)</label>
+          <input id="cxEta" maxlength="5" placeholder="14:35" inputmode="numeric" required>
+        </div>
+        <div>
+          <label for="cxFile">Arrival connection details (.txt)</label>
+          <input type="file" id="cxFile" accept=".txt,text/plain">
+        </div>
+        <div class="cx-wide cx-preview" id="cxPreview" aria-live="polite"></div>
+        <div class="cx-wide cp-err" id="cxErr" role="alert"></div>
+        <div class="cx-wide cx-actions">
+          <button class="btn" type="submit" id="cxSubmit">Update</button>
+          <button class="btn ghost" type="button" id="cxSample" hidden>Download sample file (preview only)</button>
         </div>
       </form>
-      <div class="tablewrap">
-        <table class="plain cp-table">
-          <thead><tr><th>Title</th><th>Value</th><th>Unit</th><th>Note</th><th>Updated by</th><th>Expires</th><th></th></tr></thead>
-          <tbody id="cpRows"></tbody>
-        </table>
-      </div>
+      <div id="cxResults"></div>
     </section>
   </div>
 </main>
@@ -1092,6 +1130,7 @@ async function load(first) {
     if (first) { if ($("#viewGate").hidden) state.pendingInit = true; else initialScroll(); }
     else { gantt.scrollLeft = Math.max(0, keepX - (shift / STEP) * state.u); gantt.scrollTop = keepY; }     // 표시 구간이 밀린 만큼 보정
     updateStamp();
+    if (!$("#viewConn").hidden && cp.records.length) cxRender();
   } catch (err) {
     gantt.innerHTML = `<div class="empty">게이트 데이터를 불러오지 못했습니다. ${esc(err.message || "")} 연결 상태를 확인한 뒤 다시 조회해 주세요.</div>`;
   }
@@ -1520,24 +1559,11 @@ const SB = {
   }
 };
 
-const cp = { kind: "rule", items: [], editing: null };
+const cp = { records: [] };
+const cx = { parsed: null, showAll: false };
 const cpWhen = iso => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-function cpExpiry(iso) {
-  const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return "Expired";
-  const m = Math.floor(ms / 60000);
-  return `${cpWhen(iso)}<br><small>${Math.floor(m / 60)}h ${m % 60}m left</small>`;
-}
-function cpRender() {
-  const list = cp.items.filter(i => i.kind === cp.kind);
-  $("#cpRows").innerHTML = list.length ? list.map(i => `<tr>
-      <td><b>${esc(i.title)}</b></td><td>${esc(i.value || "—")}</td><td>${esc(i.unit || "")}</td>
-      <td class="cp-notecell">${esc(i.note || "")}</td>
-      <td>${esc(i.updated_by_email || "")}<br><small>${cpWhen(i.updated_at)}</small></td>
-      <td>${cpExpiry(i.expires_at)}</td>
-      <td class="cp-row-actions"><button type="button" data-act="edit" data-id="${esc(i.id)}">Edit</button> <button type="button" data-act="del" data-id="${esc(i.id)}">Delete</button></td>
-    </tr>`).join("") : `<tr><td colspan="7" class="cp-empty">No items yet. Add one above.</td></tr>`;
-}
+
+/* ---- 로그인 화면 ---- */
 function cpAuthUi() {
   const problem = SB.problem(), signed = !!SB.session && !problem;
   $("#cpLogin").hidden = signed;
@@ -1548,12 +1574,12 @@ function cpAuthUi() {
 }
 function cpHandleError(e) {
   if (/session expired|not signed in/i.test(e.message)) {
-    cp.items = []; cpRender(); cpAuthUi();
+    cp.records = []; cxRender(); cpAuthUi();
     $("#cpLoginErr").textContent = "Your session has expired. Please sign in again.";
-  } else $("#cpErr").textContent = e.message;
+  } else $("#cxErr").textContent = e.message;
 }
 async function cpRefresh() {
-  try { cp.items = (await SB.rest("planner_items?select=*&order=created_at.desc")) || []; $("#cpErr").textContent = ""; cpRender(); }
+  try { cp.records = (await SB.rest("arrival_connections?select=*&order=created_at.desc")) || []; cxRender(); }
   catch (e) { cpHandleError(e); }
 }
 function cpEnter() { SB.load(); cpAuthUi(); if (SB.session && !SB.problem()) cpRefresh(); }
@@ -1563,51 +1589,251 @@ async function cpDoLogin(email, pw) {
   catch (e) { err.textContent = e.message; $("#cpPassword").value = ""; await sleep(500); }
   $("#cpLoginBtn").disabled = !!SB.problem();
 }
-function cpResetForm() {
-  cp.editing = null;
-  ["#cpTitle", "#cpValue", "#cpUnit", "#cpNote"].forEach(s => { $(s).value = ""; });
-  $("#cpSubmit").textContent = "Add"; $("#cpCancel").hidden = true; $("#cpErr").textContent = "";
+
+/* ---- 환승 연결 정보 읽기 ----
+   파일에서 한 줄씩 보면서 다음 순서로 숫자를 찾습니다. (파일 자체는 저장하지 않고, 찾은 숫자만 저장합니다)
+   1) KE/OZ/LJ/MF/GA/CI 로 시작하는 편명  2) 그 뒤의 영문 3글자(도착지)  3) F, C, Y 인원수(합계가 승객수)  4) Bags 개수 */
+const CX_CARRIERS = ["KE", "OZ", "LJ", "MF", "GA", "CI"];
+const CX_NOT_DEST = new Set(["BAG", "PAX", "TTL", "TOT", "ETA", "ETD", "FLT", "DEP", "ARR"]);
+function parseConnections(text) {
+  const lines = String(text).split(/\r?\n/);
+  /* 머리글 줄(FLT GATE DPRT TO F C Y BAGS)이 있으면 TO 뒤의 열 순서를 그대로 따릅니다. 없으면 F, C, Y, BAGS 순서로 봅니다. */
+  let order = ["F", "C", "Y", "BAGS"];
+  for (const raw of lines) {
+    const L = raw.toUpperCase();
+    if (/\bTO\b/.test(L) && /\bF\b/.test(L) && /\bC\b/.test(L) && /\bY\b/.test(L) && /\bBAGS?\b/.test(L)) {
+      const o = (L.slice(L.search(/\bTO\b/) + 2).match(/\b(F|C|Y|BAGS?)\b/g) || []).map(t => t.startsWith("BAG") ? "BAGS" : t);
+      if (o.length === 4 && new Set(o).size === 4) order = o;
+      break;
+    }
+  }
+  /* 편명 뒤의 DPRT(출발 예정 시각), 도착지, F/C/Y, Bags 를 읽습니다. */
+  const columns = rest => {
+    let dest = "", afterDest = rest, std = "";
+    const dr = /(^|[^A-Z0-9])([A-Z]{3})(?![A-Z0-9])/g;
+    let m;
+    while ((m = dr.exec(rest))) {
+      if (CX_NOT_DEST.has(m[2])) continue;
+      dest = m[2]; afterDest = rest.slice(m.index + m[0].length);
+      const tm = [...rest.slice(0, m.index).matchAll(/(^|[^0-9:])([01]?\d|2[0-3])(?::?)([0-5]\d)(?![0-9])/g)].pop();   // 도착지 바로 앞의 시각이 DPRT
+      if (tm) std = `${pad(+tm[2])}:${tm[3]}`;
+      break;
+    }
+    let f = 0, c = 0, y = 0, bags = 0, gotCls = false, gotBags = false;
+    const lab = afterDest.match(/F\s*\/\s*C\s*\/\s*Y\s*[:=]?\s*(\d+)[\/\-,\s]+(\d+)[\/\-,\s]+(\d+)/);        // "F/C/Y 1/2/30"
+    const grab = k => { const r = afterDest.match(new RegExp(`(^|[^A-Z0-9])${k}\\s*[:=]?\\s*(\\d+)`)); if (r) { gotCls = true; return +r[2]; } return 0; };
+    const bm = afterDest.match(/BAGS?\s*[:=]?\s*(\d+)/) || afterDest.match(/(\d+)\s*BAGS?(?![A-Z])/);       // "BAGS 38", "38 BAGS"
+    if (lab) { gotCls = true; f = +lab[1]; c = +lab[2]; y = +lab[3]; }
+    else { f = grab("F"); c = grab("C"); y = grab("Y"); }                                                    // "F1 C2 Y30"
+    if (bm) { bags = +bm[1]; gotBags = true; }
+    if (!gotCls) { const t = afterDest.match(/(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)/); if (t) { gotCls = true; f = +t[1]; c = +t[2]; y = +t[3]; } }     // "1/2/30"
+    if (!gotCls && !gotBags) {                                         // 머리글처럼 숫자만 나열된 경우: 0 1 0 1  ->  F, C, Y, BAGS 순서
+      const nums = (afterDest.match(/\d+/g) || []).map(Number);
+      if (nums.length) {
+        const val = {}; order.forEach((k, i) => { if (i < nums.length) val[k] = nums[i]; });
+        f = val.F || 0; c = val.C || 0; y = val.Y || 0; bags = val.BAGS || 0;
+        gotCls = nums.length >= 3; gotBags = nums.length >= 4;
+      }
+    }
+    return { dest, std, f, c, y, bags, gotCls, gotBags };
+  };
+  const byKey = new Map(), numeric = [], warn = [];
+  let ignored = 0;
+  lines.forEach((raw, idx) => {
+    const L = raw.toUpperCase();
+    if (!L.trim()) return;
+    const fm = L.match(new RegExp(`(^|[^A-Z0-9])(${CX_CARRIERS.join("|")})\\s{0,2}0*(\\d{1,4})([A-Z])?(?![A-Z0-9])`));
+    if (!fm) {
+      /* 7924 처럼 글자 없이 숫자만 있는 편명은 DL 코드셰어 번호입니다. 도착지와 DPRT 가 같은 KE/OZ... 편에 합칩니다. */
+      const nm = L.match(/^\s*(?:DL\s*)?(\d{3,4})(?=\s)/);
+      if (nm) {
+        const r = columns(L.slice(nm[0].length));
+        if (r.dest && r.std && r.gotCls) { numeric.push({ no: nm[1], line: idx + 1, ...r }); return; }
+      }
+      ignored++; return;                                              // 그 밖의 줄(다른 항공사, 머리글 등)은 읽지 않음
+    }
+    const flight = fm[2] + fm[3] + (fm[4] || "");
+    const r = columns(L.slice(fm.index + fm[0].length));
+    if (!r.dest) warn.push(`Line ${idx + 1}: destination not found`);
+    if (!r.gotCls) warn.push(`Line ${idx + 1}: F/C/Y numbers not found`);
+    if (!r.gotBags) warn.push(`Line ${idx + 1}: Bags not found`);
+    const key = `${flight}|${r.std}`;
+    const cur = byKey.get(key) || { flight, dest: "", std: r.std, pax: 0, bags: 0, f: 0, c: 0, y: 0 };
+    cur.dest = cur.dest || r.dest; cur.pax += r.f + r.c + r.y; cur.bags += r.bags; cur.f += r.f; cur.c += r.c; cur.y += r.y;
+    byKey.set(key, cur);
+  });
+  const rows = [...byKey.values()], unmatched = [];
+  let merged = 0;
+  numeric.forEach(n => {
+    const cand = rows.filter(r => r.dest === n.dest && r.std && r.std === n.std);
+    if (cand.length === 1) {
+      const t = cand[0];
+      t.pax += n.f + n.c + n.y; t.bags += n.bags; t.f += n.f; t.c += n.c; t.y += n.y;
+      (t.via = t.via || []).push("DL" + n.no); merged++;
+    } else unmatched.push({ no: n.no, dest: n.dest, std: n.std, pax: n.f + n.c + n.y, bags: n.bags, why: cand.length ? "more than one flight with the same destination and time" : "no flight with the same destination and time" });
+  });
+  return { rows, warn, ignored, merged, unmatched };
 }
-function cpEdit(it) {
-  cp.editing = it.id; cp.kind = it.kind; cpTabs();
-  $("#cpTitle").value = it.title; $("#cpValue").value = it.value || ""; $("#cpUnit").value = it.unit || ""; $("#cpNote").value = it.note || "";
-  $("#cpSubmit").textContent = "Save"; $("#cpCancel").hidden = false; $("#cpErr").textContent = "";
-  if ($("#cpTitle").focus) $("#cpTitle").focus();
+function normEta(s) {
+  const m = String(s).trim().match(/^(\d{1,2}):?(\d{2})$/);
+  if (!m) return null;
+  const h = +m[1], mi = +m[2];
+  return h > 23 || mi > 59 ? null : `${pad(h)}:${pad(mi)}`;
 }
-async function cpSubmit() {
-  const val = s => $(s).value.trim() || null;
-  const data = { title: $("#cpTitle").value.trim(), value: val("#cpValue"), unit: val("#cpUnit"), note: val("#cpNote") };
-  if (!data.title) { $("#cpErr").textContent = "Title is required."; return; }
+function resolveEta(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number), now = new Date();
+  return [-1, 0, 1].map(d => new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, h, m)).sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
+}
+const cxSameFlight = (apiFlight, f) => { const x = String(apiFlight).toUpperCase(); return x === f || (x.length === f.length + 1 && x.startsWith(f) && /[A-Z]/.test(x[x.length - 1])); };
+/* 환승편 ETD: Gate Planner 데이터의 출발 시각(실제, 변경, 예정 순)을 씁니다.
+   1) 파일의 DPRT(예정 시각)와 도착지가 같은 출발편  2) 편명이 같은 출발편  3) 둘 다 없으면 파일의 DPRT 를 그대로 사용 */
+function cxEtd(r, etaMin) {
+  const deps = state.flights.filter(l => l.dir === "DEP");
+  let std = null;
+  if (r.std) {
+    const [h, mi] = r.std.split(":").map(Number), base = Math.floor(etaMin / 1440) * 1440;
+    for (const k of [-1, 0, 1, 2]) { const t = base + k * 1440 + h * 60 + mi; if (t >= etaMin - 120) { std = t; break; } }   // ETA 보다 2시간 이전부터 가장 가까운 시각
+  }
+  if (std != null && r.dest) {
+    const c = deps.filter(l => l.apt === r.dest && Math.abs(l.sched - std) <= 30)
+      .sort((a, b) => (cxSameFlight(b.flight, r.flight) - cxSameFlight(a.flight, r.flight)) || Math.abs(a.sched - std) - Math.abs(b.sched - std));
+    if (c.length) return { t: eff(c[0]), leg: c[0], src: "gate" };
+  }
+  const same = deps.filter(l => cxSameFlight(l.flight, r.flight));
+  if (same.length) {
+    const pick = std != null ? same.filter(l => Math.abs(l.sched - std) <= 120).sort((a, b) => Math.abs(a.sched - std) - Math.abs(b.sched - std))[0]
+      : (same.map(l => ({ l, t: eff(l) })).sort((a, b) => a.t - b.t).find(x => x.t >= etaMin - 180) || {}).l;
+    if (pick) return { t: eff(pick), leg: pick, src: "gate" };
+  }
+  return std != null ? { t: std, leg: null, src: "file" } : null;
+}
+function cxStatus(mins) {
+  if (mins < 30) return { label: "** MIS CONX **", cls: "mis" };
+  if (mins < 45) return { label: "** NEED TO CHECK ETA CHANGE **", cls: "chk" };
+  if (mins < 60) return { label: "**COVER SAME FLIGHT WITH M/A**", cls: "cover" };
+  return null;
+}
+
+/* ---- 화면 그리기 ---- */
+function cxPreview() {
+  const el = $("#cxPreview"), p = cx.parsed;
+  if (!p) { el.innerHTML = ""; return; }
+  if (!p.rows.length) { el.innerHTML = `<b>No connecting flights were recognized.</b> Lines checked: ${p.ignored}. Please check the file.`; return; }
+  const pax = p.rows.reduce((s, r) => s + r.pax, 0), bags = p.rows.reduce((s, r) => s + r.bags, 0);
+  el.innerHTML = `Recognized <b>${p.rows.length}</b> connecting flights, <b>${pax}</b> pax, <b>${bags}</b> bags. Lines not read: ${p.ignored}.<br>` +
+    p.rows.map(r => `${esc(r.flight)} ${esc(r.dest || "—")}${r.std ? " " + esc(r.std) : ""} ${r.pax}/${r.bags}`).join(", ") +
+    (p.merged ? `<br>DL codeshare lines merged into the matching flight (same destination and time): <b>${p.merged}</b>.` : "") +
+    (p.unmatched.length ? `<br><b>Not counted</b> (no matching flight): ${p.unmatched.map(u => `DL${esc(u.no)} ${esc(u.dest)} ${esc(u.std)} (${u.pax} pax, ${u.bags} bags${u.why.startsWith("more") ? ", " + esc(u.why) : ""})`).join(", ")}.` : "") +
+    (p.warn.length ? `<br><b>Please check:</b> ${esc(p.warn.slice(0, 5).join("; "))}${p.warn.length > 5 ? ` (+${p.warn.length - 5} more)` : ""}` : "");
+}
+function cxEtdNote(x) {
+  if (!x.etd) return "";
+  if (x.etd.src === "file") return `<br><small>STD from file (not in Gate Planner)</small>`;
+  const l = x.etd.leg, notes = [];
+  if (eff(l) !== l.sched) notes.push(`STD ${fmt(l.sched)}`);
+  if (!cxSameFlight(l.flight, x.r.flight)) notes.push(`as ${esc(l.flight)}`);
+  return notes.length ? `<br><small>${notes.join(", ")}</small>` : "";
+}
+function cxRender() {
+  const box = $("#cxResults"), recs = cp.records;
+  if (!recs.length) { box.innerHTML = `<div class="cp-empty">No arrival flight details yet. Enter the flight and ETA, attach the .txt file and press Update.</div>`; return; }
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  let html = `<div class="cx-allbar"><label><input type="checkbox" id="cxAll"${cx.showAll ? " checked" : ""}> Also show flights with 60 minutes or more</label></div>`;
+  html += recs.map(rec => {
+    const etaMin = Math.round((new Date(rec.eta_at).getTime() - midnight.getTime()) / 60000);
+    const items = (rec.rows || []).map(r => {
+      const etd = cxEtd(r, etaMin), mins = etd ? etd.t - etaMin : null;
+      return { r, etd, mins, st: mins == null ? null : cxStatus(mins) };
+    }).sort((a, b) => (a.mins == null) - (b.mins == null) || a.mins - b.mins || a.r.flight.localeCompare(b.r.flight));
+    const shown = items.filter(x => cx.showAll || x.mins == null || x.st);
+    const cnt = k => items.filter(x => x.st && x.st.cls === k);
+    const tot = list => `${list.length} flights, ${list.reduce((s, x) => s + x.r.pax, 0)} pax, ${list.reduce((s, x) => s + x.r.bags, 0)} bags`;
+    const sum = [["mis", "MIS CONX"], ["chk", "NEED TO CHECK ETA CHANGE"], ["cover", "COVER SAME FLIGHT WITH M/A"]].filter(([k]) => cnt(k).length)
+      .map(([k, n]) => `<span class="cx-badge cx-${k}">${n}</span> ${tot(cnt(k))}`).join(" &nbsp; ");
+    const body = shown.length ? shown.map(x => `<tr class="${x.st ? "cx-row-" + x.st.cls : ""}">
+        <td><b>${esc(x.r.flight)}</b></td><td>${esc(x.r.dest || "—")}${x.r.std ? ` <small>${esc(x.r.std)}</small>` : ""}</td>
+        <td>${x.r.pax} <small>F${x.r.f}/C${x.r.c}/Y${x.r.y}</small>${x.r.via && x.r.via.length ? `<br><small>incl. ${esc(x.r.via.join(", "))}</small>` : ""}</td><td>${x.r.bags}</td>
+        <td>${x.etd ? fmt(x.etd.t) : "N/A"}${cxEtdNote(x)}</td><td>${x.mins == null ? "—" : x.mins + " min"}</td>
+        <td>${x.st ? `<span class="cx-badge cx-${x.st.cls}">${x.st.label}</span>` : x.mins == null ? `<span class="cx-badge cx-na">ETD not found in Gate Planner</span>` : ""}</td></tr>`).join("")
+      : `<tr><td colspan="7" class="cp-empty">No connecting flight is under 60 minutes.</td></tr>`;
+    const left = Math.max(0, Math.floor((new Date(rec.expires_at).getTime() - Date.now()) / 60000));
+    return `<div class="cx-rec">
+      <div class="cx-head"><h3>${esc(rec.arrival_flight)} &nbsp;ETA ${esc(rec.eta_time)}</h3>
+        <div class="cx-meta">Updated by ${esc(rec.created_by_email || "")} at ${cpWhen(rec.created_at)}, discarded at ${cpWhen(rec.expires_at)} (${Math.floor(left / 60)}h ${left % 60}m left)
+          <button type="button" class="btn ghost small" data-rid="${esc(rec.id)}">Discard now</button></div></div>
+      <div class="cx-sum">${sum || "No connecting flight is under 60 minutes."}</div>
+      <div class="tablewrap"><table class="plain cx-table"><thead><tr><th>Connecting flight</th><th>Dest / STD</th><th>Pax</th><th>Bags</th><th>ETD</th><th>Connection time</th><th>Status</th></tr></thead><tbody>${body}</tbody></table></div>
+    </div>`;
+  }).join("");
+  box.innerHTML = html;
+}
+
+/* ---- 저장과 삭제 ---- */
+function cxResetForm() {
+  ["#cxFlight", "#cxEta", "#cxFile"].forEach(s => { $(s).value = ""; });
+  cx.parsed = null; cxPreview(); $("#cxErr").textContent = "";
+}
+async function cxSave() {
+  const err = $("#cxErr"); err.textContent = "";
+  const num = $("#cxFlight").value.trim().toUpperCase().replace(/^DL/, "");
+  if (!/^[0-9A-Z]{1,5}$/.test(num)) { err.textContent = "Enter the arrival flight number, for example 1234."; return; }
+  const eta = normEta($("#cxEta").value);
+  if (!eta) { err.textContent = "Enter the ETA as HH:MM, for example 14:35."; return; }
+  if (!cx.parsed) { err.textContent = "Attach the arrival connection details (.txt) first."; return; }
+  if (!cx.parsed.rows.length) { err.textContent = "No connecting flights were recognized in the attached file."; return; }
+  if (cx.parsed.rows.length > 300) { err.textContent = "Too many connecting flights (maximum 300)."; return; }
+  const flight = "DL" + num;
+  $("#cxSubmit").disabled = true;
   try {
-    if (cp.editing) {
-      const r = await SB.rest(`planner_items?id=eq.${encodeURIComponent(cp.editing)}`, { method: "PATCH", body: data, prefer: "return=representation" });
-      if (!r || !r.length) throw new Error("This item was not found. It may have expired.");
-    } else await SB.rest("planner_items", { method: "POST", body: Object.assign({ kind: cp.kind }, data), prefer: "return=representation" });
-    cpResetForm(); await cpRefresh();
+    const saved = await SB.rest("arrival_connections", { method: "POST", body: { arrival_flight: flight, eta_time: eta, eta_at: resolveEta(eta).toISOString(), rows: cx.parsed.rows }, prefer: "return=representation" });
+    const id = saved && saved[0] && saved[0].id;
+    if (id) await SB.rest(`arrival_connections?arrival_flight=eq.${encodeURIComponent(flight)}&id=neq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=minimal" });   // 같은 도착편의 이전 입력은 지웁니다
+    cxResetForm(); await cpRefresh();
   } catch (e) { cpHandleError(e); }
+  $("#cxSubmit").disabled = false;
 }
-function cpTabs() {
-  document.querySelectorAll(".cp-tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.kind === cp.kind)));
-  cpRender();
-}
+
 $("#cpLoginForm").addEventListener("submit", e => { e.preventDefault(); cpDoLogin($("#cpEmail").value.trim(), $("#cpPassword").value); });
-$("#cpForm").addEventListener("submit", e => { e.preventDefault(); cpSubmit(); });
-$("#cpCancel").addEventListener("click", cpResetForm);
+$("#cxForm").addEventListener("submit", e => { e.preventDefault(); cxSave(); });
+$("#cxFile").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0];
+  $("#cxErr").textContent = "";
+  if (!f) { cx.parsed = null; cxPreview(); return; }
+  if (f.size > 2000000) { cx.parsed = null; cxPreview(); $("#cxErr").textContent = "The file is too large (maximum 2 MB)."; return; }
+  try { cx.parsed = parseConnections(await f.text()); } catch (err) { cx.parsed = null; $("#cxErr").textContent = "The file could not be read."; }
+  cxPreview();
+});
 $("#cpRefresh").addEventListener("click", cpRefresh);
-$("#cpSignOut").addEventListener("click", async () => { await SB.signOut(); cp.items = []; cpResetForm(); cpRender(); cpAuthUi(); });
-document.querySelectorAll(".cp-tabs button").forEach(b => b.addEventListener("click", () => { cp.kind = b.dataset.kind; cpResetForm(); cpTabs(); }));
-$("#cpRows").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-act]"); if (!b) return;
-  const id = b.dataset.id;
-  if (b.dataset.act === "edit") { const it = cp.items.find(x => x.id === id); if (it) cpEdit(it); return; }
+$("#cpSignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; cxResetForm(); cxRender(); cpAuthUi(); });
+$("#cxResults").addEventListener("change", e => { if (e.target && e.target.id === "cxAll") { cx.showAll = !!e.target.checked; cxRender(); } });
+$("#cxResults").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-rid]"); if (!b) return;
   if (b.dataset.armed !== "1") {                                            // 삭제는 두 번 눌러야 실행됩니다
-    b.dataset.armed = "1"; b.textContent = "Confirm delete";
-    setTimeout(() => { b.dataset.armed = ""; b.textContent = "Delete"; }, 4000);
+    b.dataset.armed = "1"; b.textContent = "Confirm discard";
+    setTimeout(() => { b.dataset.armed = ""; b.textContent = "Discard now"; }, 4000);
     return;
   }
-  try { await SB.rest(`planner_items?id=eq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=representation" }); await cpRefresh(); }
+  try { await SB.rest(`arrival_connections?id=eq.${encodeURIComponent(b.dataset.rid)}`, { method: "DELETE", prefer: "return=minimal" }); await cpRefresh(); }
   catch (err) { cpHandleError(err); }
 });
+/* 미리보기에서만: 시험용 샘플 파일 내려받기 */
+if (window.__icnMock) {
+  $("#cxSample").hidden = false;
+  $("#cxSample").addEventListener("click", () => {
+    const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+    const deps = state.flights.filter(l => l.dir === "DEP" && /^(KE|OZ|LJ)/.test(l.flight) && eff(l) > nowMin + 20 && eff(l) < nowMin + 240).sort((a, b) => eff(a) - eff(b));
+    const seen = new Set(), pick = [];
+    for (const l of deps) { if (!seen.has(l.flight)) { seen.add(l.flight); pick.push(l); } if (pick.length === 6) break; }
+    const eta = pick.length ? eff(pick[0]) - 20 : nowMin + 60;
+    const lines = ["FLT GATE DPRT  TO            F    C    Y               BAGS", "  7924      1845 CNX            0    1    0                 1", ""];
+    const hhmm = t => `${pad(Math.floor(t / 60) % 24)}${pad(t % 60)}`;
+    pick.forEach((l, i) => lines.push(`${l.flight.slice(0, 2)}${l.flight.length < 6 ? " " : ""}${l.flight.slice(2)}`.padEnd(8) + `    ${hhmm(l.sched)} ${l.apt || "NRT"}`.padEnd(24) + `${i % 2}`.padStart(4) + `${2 + i}`.padStart(5) + `${10 + i * 7}`.padStart(5) + `${14 + i * 9}`.padStart(18)));
+    lines.unshift(`(demo sample, enter ETA ${pad(Math.floor(eta / 60) % 24)}:${pad(eta % 60)})`);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/plain" }));
+    a.download = "sample-arrival-connections.txt"; a.click(); URL.revokeObjectURL(a.href);
+  });
+}
 setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cpRefresh(); }, 30000);
 
 function currentView() { return (typeof location !== "undefined" && location.hash === "#connection") ? "connection" : "gate"; }
