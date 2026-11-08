@@ -380,6 +380,11 @@ body.chat-open .chat-toggle { display: none; }
 @keyframes flash { 50% { outline-color: transparent; } }
 @media (max-width: 640px) { .chat { width: 100vw; } }
 
+.panel.soon { margin-top: -52px; position: relative; padding: 56px 24px; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.16); border-radius: 6px; }
+.panel.soon .empty b { font-size: 20px; color: var(--ink); }
+body.view-conn .chat, body.view-conn .chat-toggle { display: none !important; }
+body.view-conn { padding-right: 0 !important; }
+
 footer { background: var(--band); color: var(--band-muted); font-size: 13px; }
 footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
@@ -417,7 +422,8 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
   <div class="wrap">
     <div class="brand"><i aria-hidden="true"></i>ICN CONNECT</div>
     <nav class="nav" aria-label="주 메뉴">
-      <a href="#gates" aria-current="page">T2 게이트 현황</a>
+      <a href="#gate" data-view="gate" aria-current="page">Gate Planner</a>
+      <a href="#connection" data-view="connection">Connection Planner</a>
     </nav>
   </div>
 </header>
@@ -426,9 +432,10 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
   <div class="wrap">현재 화면의 게이트 점유 데이터는 디자인 확인용 샘플입니다. API 연결 후 실제 운항 정보로 바뀝니다.</div>
 </div>
 
+<div id="viewGate">
 <section class="hero">
   <div class="wrap">
-    <h1>T2 게이트 배정 현황</h1>
+    <h1>T2 Gate Planner</h1>
     
   </div>
 </section>
@@ -442,32 +449,32 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
         <input type="search" id="q" placeholder="e.g. HL7612, KE652, BKK" autocomplete="off">
       </div>
       <button class="btn" type="submit">Search</button>
-      <button class="btn ghost" type="button" id="goNow">현재 시각으로 이동</button>
+      <button class="btn ghost" type="button" id="goNow">Go to current time</button>
     </form>
 
     <div class="panel" style="margin-top:24px">
       <div class="kpis" id="kpis" aria-live="polite"></div>
     </div>
 
-    <section class="panel" id="gates" aria-label="T2 게이트 배정 현황">
+    <section class="panel" id="gates" aria-label="T2 Gate Planner">
       <header>
         <div>
           
           <div class="sub" id="gSub"><span id="hitsInline"></span></div>
         </div>
-        <div class="legend" aria-label="범례">
+        <div class="legend" aria-label="Legend">
           <span><i class="sw dl"></i>DL</span>
           <span><i class="sw sky"></i>KE·OZ</span>
           <span><i class="sw grn"></i>LJ·BX·RS</span>
-          <span><i class="sw oth"></i>기타 항공사</span>
-          <span><i class="sw done"></i>출발 완료</span>
-          <span><i class="sw act"></i>점유 중 (굵은 테두리)</span>
-          <span><i class="sw est"></i>점유 중 예상 구간</span>
-          <span><i class="sw delay"></i>Delayed flights (예정 대비 15분 이상)</span>
-          <span><i class="sw conf"></i>게이트 중첩</span>
-          <span><i class="sw cap"></i>A350-900 주기 가능 게이트</span>
-          <span><b class="legstar">*</b>A350-1000도 주기 가능</span>
-          <span><i class="sw single"></i>소산 항공편 (도착 후 40분, 출발 80분 전)</span>
+          <span><i class="sw oth"></i>OA</span>
+          <span><i class="sw done"></i>Departed</span>
+          <span><i class="sw act"></i>Occupied</span>
+          <span><i class="sw est"></i>Expected occupancy</span>
+          <span><i class="sw delay"></i>Delayed flights (STD+15)</span>
+          <span><i class="sw conf"></i>Gate overlap</span>
+          <span><i class="sw cap"></i>A350-900 Gate</span>
+          <span><b class="legstar">*</b>A350-1000 Gate</span>
+          <span><i class="sw single"></i>Tow in/out A/C (ATA+40mins, ETD-80mins)</span>
         </div>
       </header>
       <div class="gantt" id="gantt" tabindex="0" aria-label="T2 게이트별 점유 현황 차트. 방향키로 스크롤합니다."></div>
@@ -476,6 +483,22 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
 
   </div>
 </main>
+</div>
+
+<div id="viewConn" hidden>
+<section class="hero">
+  <div class="wrap">
+    <h1>Connection Planner</h1>
+  </div>
+</section>
+<main>
+  <div class="wrap">
+    <div class="panel soon">
+      <div class="empty"><b>준비 중입니다</b><br>Coming soon</div>
+    </div>
+  </div>
+</main>
+</div>
 
 <aside class="chat" id="chat" aria-label="Ask to Gate planner">
   <div class="chat-head">
@@ -796,15 +819,15 @@ function renderKpis(conflicts) {
   const otpItem = (label, s, word) => ({
     l: label,
     v: s && s.rate != null ? s.rate.toFixed(1) : "—", u: s && s.rate != null ? "%" : "",
-    n: !s ? "" : OTP.basis === "all" ? `금일 전체 ${s.total}편 중 ${s.ok}편` : `${word} 완료 ${s.done}편 중 ${s.ok}편`,
+    n: !s ? "" : OTP.basis === "all" ? `${s.ok}/${s.total}` : `${s.ok}/${s.done}`,
     t: `${OTP.airline} ${word} 정시율: 금일 ${OTP.airline} ${word} 항공편 중 예정시간 대비 실제시간이 같거나 빠른 항공편의 비율`
   });
   const k = [
-    { l: "점유 중 게이트", v: hasNow ? `${occ}` : "—", u: hasNow ? `/ ${GATES.length}` : "", n: hasNow ? "지금 항공기가 있는 게이트" : "오늘 날짜에서만 표시됩니다" },
+    { l: "Occupied gates", v: hasNow ? `${occ}` : "—", u: hasNow ? `/ ${GATES.length}` : "", n: hasNow ? "Gates with an aircraft now" : "Shown for today only" },
     otpItem(`Today’s ${OTP.airline} A0`, state.otp && state.otp.a, "도착"),
     otpItem(`Today’s ${OTP.airline} D0`, state.otp && state.otp.d, "출발"),
-    { l: "Delayed flights", v: delayed, u: "건", n: "예정 대비 15분 이상" },
-    { l: "게이트 중첩", v: conflicts, u: "건", n: "점유 시간이 겹침", alert: conflicts > 0 }
+    { l: "Delayed flights", v: delayed, u: "건", n: "STD+15" },
+    { l: "Gate overlap", v: conflicts, u: "건", n: "점유 시간이 겹침", alert: conflicts > 0 }
   ];
   $("#kpis").innerHTML = k.map(x => `<div class="kpi ${x.alert ? "alert" : ""}"${x.t ? ` title="${esc(x.t)}"` : ""}><div class="label">${x.l}</div><div class="value">${x.v}<small>${x.u}</small></div><div class="note">${x.n}</div></div>`).join("");
 }
@@ -969,6 +992,7 @@ function mainGateScrollTop() {
   const rowCenter = HEAD + i * ROW + ROW / 2;
   return Math.max(0, Math.round(rowCenter - (HEAD + (gantt.clientHeight - HEAD) / 2)));
 }
+function initialScroll() { gantt.scrollLeft = 0; gantt.scrollTop = mainGateScrollTop(); }
 function scrollToNow(smooth) {
   const target = ((state.now - state.win.start) / STEP) * state.u;
   gantt.scrollTo({ left: Math.max(0, target - gantt.clientWidth * 0.3), behavior: smooth ? "smooth" : "auto" });
@@ -992,7 +1016,7 @@ async function load(first) {
     renderKpis(conflicts);
     const keepX = gantt.scrollLeft, keepY = gantt.scrollTop;
     renderChart();
-    if (first) { gantt.scrollLeft = 0; gantt.scrollTop = mainGateScrollTop(); }
+    if (first) { if ($("#viewGate").hidden) state.pendingInit = true; else initialScroll(); }
     else { gantt.scrollLeft = Math.max(0, keepX - (shift / STEP) * state.u); gantt.scrollTop = keepY; }     // 표시 구간이 밀린 만큼 보정
     updateStamp();
   } catch (err) {
@@ -1359,6 +1383,25 @@ function setChat(open) {
   try { saved = localStorage.getItem("icnChatOpen"); } catch (e) {}
   setChat(saved === null ? (window.innerWidth || 0) >= 1600 : saved === "1");
 })();
+
+/* 메뉴: 주소 끝의 #gate, #connection 으로 화면을 바꿉니다. */
+function currentView() { return (typeof location !== "undefined" && location.hash === "#connection") ? "connection" : "gate"; }
+function showView(name) {
+  const conn = name === "connection";
+  if (conn && !$("#viewGate").hidden) state.sv = { x: gantt.scrollLeft, y: gantt.scrollTop };      // 게이트 화면의 스크롤 위치 기억
+  $("#viewGate").hidden = conn;
+  $("#viewConn").hidden = !conn;
+  document.body.classList.toggle("view-conn", conn);
+  document.querySelectorAll(".nav a").forEach(a => {
+    if (a.dataset.view === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  if (!conn) {
+    if (state.pendingInit) { initialScroll(); state.pendingInit = false; }
+    else if (state.sv) { gantt.scrollLeft = state.sv.x; gantt.scrollTop = state.sv.y; }
+  }
+}
+window.addEventListener("hashchange", () => showView(currentView()));
+showView(currentView());
 
 load(true);
 if (CONFIG.logoSrc) {
