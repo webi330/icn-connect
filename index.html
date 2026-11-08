@@ -1509,7 +1509,7 @@ function setChat(open) {
   try { localStorage.setItem("icnChatOpen", open ? "1" : "0"); } catch (e) {}
 }
 (function initChat() {
-  const examples = [["지금 비어 있는 게이트", "지금 비어 있는 게이트"], ["A350 가능한 빈 게이트", "A350 가능한 빈 게이트"], ["지연 항공편", "지연 항공편"], ["미배정 항공편", "미배정 항공편"], ["게이트 중첩", "게이트 중첩"], ["KE 정시율", "KE 정시율"]];
+  const examples = [["지금 빈 게이트", "지금 비어 있는 게이트는?"], ["시간대별 빈 게이트", "오늘 14:00부터 17:00까지 빈 게이트는?"], ["A350-1000 게이트", "지금 A350-1000이 주기 가능한 빈 게이트는?"], ["지연 항공편", "오늘 15분 이상 지연된 항공편은?"], ["미배정 항공편", "오늘 게이트 미배정 항공편은?"], ["게이트 중첩", "오늘 게이트 점유가 중첩된 곳은?"], ["KE 정시율", "오늘 KE의 A0와 D0는?"]];
   $("#chatChips").innerHTML = examples.map(([label, q]) => `<button type="button" data-q="${esc(q)}">${esc(label)}</button>`).join("");
   chatAdd("bot", `저는 아직 OJT 중인 Gate Planner입니다. 오류가 발생할 수 있으니 꼭 실제로 검증하시기 바랍니다.<br><br>I am a Gate Planner still undergoing on-the-job training (OJT). Errors may occur, so please verify my responses against actual operational information.`);
   $("#chatForm").addEventListener("submit", e => { e.preventDefault(); const i = $("#chatInput"); const q = i.value; i.value = ""; chatAsk(q); });
