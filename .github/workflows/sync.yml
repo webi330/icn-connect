@@ -43,7 +43,9 @@ jobs:
           curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/sync_state.json?t=$(date +%s)" -o site/sync_state.json || echo "이전 상태가 없습니다 (첫 실행이면 정상)."
 
       - name: 화면 파일 복사
-        run: cp index.html site/index.html
+        run: |
+          cp index.html site/index.html
+          if [ -f supabase-config.js ]; then cp supabase-config.js site/supabase-config.js; fi
 
       - name: 데이터 갱신 실행
         env:
