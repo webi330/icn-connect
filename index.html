@@ -537,7 +537,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
           <span><i class="sw done"></i>Departed</span>
           <span><i class="sw act"></i>Occupied</span>
           <span><i class="sw est"></i>Expected occupancy</span>
-          <span><i class="sw delay"></i>Delayed flights (STD+15)</span>
+          <span><i class="sw delay"></i>Delayed (STD+15)</span>
           <span><i class="sw conf"></i>Gate overlap</span>
           <span><i class="sw cap"></i>A350-900 Gate</span>
           <span><b class="legstar">*</b>A350-1000 Gate</span>
@@ -611,7 +611,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
 
 <aside class="chat" id="chat" aria-label="Ask to Gate planner">
   <div class="chat-head">
-    <div><b>Ask to Gate planner</b><small>차트의 현재 데이터로 답해 드립니다</small></div>
+    <div><b>Ask to Gate planner</b><small>Powered by Google AI Studio</small></div>
     <button type="button" id="chatClose" aria-label="Ask to Gate planner 닫기">&times;</button>
   </div>
   <div class="chat-log" id="chatLog" role="log" aria-live="polite"></div>
@@ -620,7 +620,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
     <input type="text" id="chatInput" placeholder="예: 235 게이트, HL7612, KE652, 지연" aria-label="질문 입력">
     <button class="btn" type="submit">보내기</button>
   </form>
-  <div class="chat-note">AI가 아닌 규칙 기반 도우미입니다. 정해진 유형의 질문에만 답하며, 지금 화면에 있는 데이터를 기준으로 합니다.</div>
+  <div class="chat-note">Gemini를 통해 답변합니다. 민감정보는 물어보지 마세요</div>
 </aside>
 <button type="button" class="chat-toggle" id="chatOpen" aria-label="Ask to Gate planner 열기">Ask to Gate planner</button>
 
@@ -936,8 +936,8 @@ function renderKpis(conflicts) {
     { l: "Occupied gates", v: hasNow ? `${occ}` : "—", u: hasNow ? `/ ${GATES.length}` : "", n: hasNow ? "Gates with an aircraft now" : "Shown for today only" },
     otpItem(`Today’s ${OTP.airline} A0`, state.otp && state.otp.a, "도착"),
     otpItem(`Today’s ${OTP.airline} D0`, state.otp && state.otp.d, "출발"),
-    { l: "Delayed flights", v: delayed, u: "건", n: "STD+15" },
-    { l: "Gate overlap", v: conflicts, u: "건", n: "점유 시간이 겹침", alert: conflicts > 0 }
+    { l: "Delayed", v: delayed, u: "flights", n: "STD+15" },
+    { l: "Gate overlap", v: conflicts, u: "flights", n: "", alert: conflicts > 0 }
   ];
   $("#kpis").innerHTML = k.map(x => `<div class="kpi ${x.alert ? "alert" : ""}"${x.t ? ` title="${esc(x.t)}"` : ""}><div class="label">${x.l}</div><div class="value">${x.v}<small>${x.u}</small></div><div class="note">${x.n}</div></div>`).join("");
 }
@@ -1145,7 +1145,7 @@ function updateStamp() {
     stale = (Date.now() - t.getTime()) > Math.max(15, every * 3) * 60000;
   }
   const hm = `${pad(t.getHours())}:${pad(t.getMinutes())}`;
-  el.textContent = stale ? `데이터 갱신이 지연되고 있습니다. 마지막 갱신 ${hm}` : `마지막 갱신 ${hm} (${every}분단위 업데이트)`;
+  el.textContent = stale ? `Update delayed · Last updated ${hm} KST` : `Last updated ${hm} KST · Updated every ${every} minutes`;
   el.classList.toggle("stale", stale);
 }
 
