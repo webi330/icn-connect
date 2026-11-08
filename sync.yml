@@ -1,0 +1,76 @@
+name: ICN CONNECT 데이터 갱신
+
+on:
+  schedule:
+    # 5분마다 (2분, 7분, 12분... 에 실행). GitHub 사정으로 몇 분 늦게 실행될 수 있음
+    - cron: "2-59/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "실행 방식 (sync: 정식 / probe: API 응답 필드 확인 / demo: 샘플 화면)"
+        type: choice
+        options: [sync, probe, demo]
+        default: sync
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: icn-connect
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      MODE: ${{ github.event.inputs.mode || 'sync' }}
+      TZ: Asia/Seoul
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 이전 데이터 상태 가져오기
+        run: |
+          mkdir -p site
+          curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/sync_state.json?t=$(date +%s)" -o site/sync_state.json || echo "이전 상태가 없습니다 (첫 실행이면 정상)."
+
+      - name: 화면 파일 복사
+        run: |
+          cp index.html site/index.html
+          if [ -f supabase-config.js ]; then cp supabase-config.js site/supabase-config.js; fi
+
+      - name: 데이터 갱신 실행
+        env:
+          ICN_SERVICE_KEY: ${{ secrets.ICN_SERVICE_KEY }}
+          ICN_DATA_JS_PATH: site/data.js
+          ICN_STATE_PATH: site/sync_state.json
+        run: |
+          case "$MODE" in
+            probe) ARG="--probe"; TITLE="API 응답 확인 결과" ;;
+            demo)  ARG="--demo";  TITLE="샘플 데이터 생성 결과" ;;
+            *)     ARG="";        TITLE="데이터 갱신 결과" ;;
+          esac
+          rc=0
+          python icn_gate_sync.py --config config.github.ini $ARG > run_out.txt 2>&1 || rc=$?
+          cat run_out.txt
+          { echo "## $TITLE"; echo '```'; cat run_out.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
+      - name: 페이지 파일 묶기
+        if: env.MODE != 'probe'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: 페이지 게시
+        id: deployment
+        if: env.MODE != 'probe'
+        uses: actions/deploy-pages@v4
