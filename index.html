@@ -437,6 +437,9 @@ body.ver2 .v2bar { display: flex; }
 .fids tr.x-mis td.cx { color: #fff; background: #c01933; }
 .fids tr.x-chk td.cx { color: #3d2f00; background: #ffd84d; }
 .fids tr.x-cover td.cx { color: #0a1220; background: #8fd3ff; }
+.fids small { font-size: 12px; font-weight: 400; color: #9fb3d1; letter-spacing: 0.02em; }
+.fids tr.x-mis small, .fids tr.x-chk td.cx small { color: inherit; }
+.fids-sec { padding: 10px 20px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #7f93b3; background: #101c33; border-top: 2px solid #24344d; border-bottom: 1px solid #24344d; }
 .fids-empty { padding: 24px 20px; color: #9fb3d1; }
 @media (max-width: 640px) { .fids td { font-size: 15px; padding: 8px 10px; } .fids th { padding: 6px 10px; } .fids-head h3 { font-size: 20px; } }
 
@@ -706,30 +709,24 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
         <h2 class="cx-title">Data upload</h2>
         <div class="cp-user"><span id="cbUser"></span><button type="button" class="btn ghost small" id="cbRefresh">Refresh</button></div>
       </div>
-      <div class="cp-note">Upload a screenshot of the DL connection list. Only the recognized text is saved, not the image, and it is discarded automatically 24 hours after it is saved. Please check the recognized rows before saving.</div>
+      <div class="cp-note">Upload the connecting-arrivals report (.txt) for a DL departure. Gate and ETA of each arriving flight come from the Gate Planner data. Only the numbers read from the report are saved, not the file, and they are discarded automatically 24 hours after saving.</div>
       <form class="cx-form" id="cbForm" autocomplete="off">
-        <div class="cx-wide cb-dir" role="radiogroup" aria-label="Direction">
-          <label><input type="radio" name="cbDir" value="OUT" checked> Outbound</label>
-          <label><input type="radio" name="cbDir" value="IN"> Inbound</label>
-        </div>
         <div>
-          <label for="cbFlight">DL flight</label>
+          <label for="cbFlight">DL departure flight</label>
           <div class="cx-flight"><span class="cx-prefix">DL</span><input id="cbFlight" maxlength="5" placeholder="188" required></div>
         </div>
         <div>
-          <label for="cbTime" id="cbTimeLbl">ETD (HH:MM)</label>
+          <label for="cbTime">ETD (HH:MM)</label>
           <input id="cbTime" maxlength="5" placeholder="14:35" inputmode="numeric" required>
         </div>
         <div>
-          <label for="cbFile">Connection screenshot (image, or paste with Ctrl+V)</label>
-          <input type="file" id="cbFile" accept="image/png,image/jpeg,image/webp">
+          <label for="cbFile">Connecting-arrivals report (.txt)</label>
+          <input type="file" id="cbFile" accept=".txt,text/plain">
         </div>
         <div class="cx-wide cx-preview" id="cbStatus" aria-live="polite"></div>
-        <div class="cx-wide cb-review" id="cbReview"></div>
         <div class="cx-wide cp-err" id="cbErr" role="alert"></div>
         <div class="cx-wide cx-actions">
-          <button class="btn" type="submit" id="cbRead">Read image</button>
-          <button class="btn" type="button" id="cbSave" hidden>Save and show board</button>
+          <button class="btn" type="submit" id="cbSave">Save and show board</button>
         </div>
       </form>
       <div class="cb-boards" id="cbBoards"></div>
@@ -998,7 +995,7 @@ const Api = {
     return (d.flights || []).map(f => {
       if (f.aptName) CITY[f.apt] = f.aptName;
       const sched = isoToMin(today, f.sched), est = isoToMin(today, f.est), actual = isoToMin(today, f.actual);
-      return { dir: f.dir, flight: f.flight, reg: f.reg || "", type: AIRCRAFT_NAMES[f.type] || f.type || "", gate: f.gate ? String(f.gate) : "", apt: f.apt, sched, est: est !== sched ? est : null, actual };
+      return { dir: f.dir, flight: f.flight, cs: f.cs || [], reg: f.reg || "", type: AIRCRAFT_NAMES[f.type] || f.type || "", gate: f.gate ? String(f.gate) : "", apt: f.apt, sched, est: est !== sched ? est : null, actual };
     });
   }
 };
@@ -1264,6 +1261,7 @@ async function load(first) {
     else { gantt.scrollLeft = Math.max(0, keepX - (shift / STEP) * state.u); gantt.scrollTop = keepY; }     // 표시 구간이 밀린 만큼 보정
     updateStamp();
     if (!$("#viewConn").hidden && cp.records.length) cxRender();
+    if (!$("#viewConn").hidden && cb.records.length) cbRender();
   } catch (err) {
     gantt.innerHTML = `<div class="empty">게이트 데이터를 불러오지 못했습니다. ${esc(err.message || "")} 연결 상태를 확인한 뒤 다시 조회해 주세요.</div>`;
   }
@@ -2006,172 +2004,185 @@ if (window.__icnMock) {
 setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cpRefresh(); }, 30000);
 
 /* ====================================================================
-   Data upload: 스크린샷 -> 글자 인식(OCR) -> 확인·수정 -> 저장(Supabase connection_boards) -> FIDS 전광판
-   - 이미지는 이 브라우저 안에서만 읽고(Tesseract.js) 서버로 보내지 않습니다. 저장되는 것은 확인한 글자 값뿐입니다.
-   - 글자 인식 결과는 신뢰할 수 없는 입력으로 보고, 형식을 검사한 뒤 저장하고, 화면에 낼 때는 항상 esc() 를 거칩니다.
+   Data upload: 환승 연결 리포트(.txt) -> Supabase(dl_conx_boards) -> FIDS 전광판
+   - 파일은 이 브라우저 안에서만 읽습니다. 저장되는 것은 읽어 낸 숫자뿐이고 24시간 뒤 자동 삭제됩니다.
+   - 게이트와 ETA 는 저장하지 않고, 화면을 그릴 때마다 Gate Planner 데이터(state.flights)에서 찾아 CONX 를 다시 계산합니다.
+   - 파일 내용은 신뢰할 수 없는 입력으로 보고 형식을 검사해 읽으며, 화면에 낼 때는 항상 esc() 를 거칩니다.
 ==================================================================== */
-const cb = { records: [], rows: null, busy: false };
-const CB_FLIGHT = /^[A-Z0-9]{2}\d{1,4}[A-Z]?$/;
-function cbDir() { const r = document.querySelector('input[name="cbDir"]:checked'); return r ? r.value : "OUT"; }
-function cbDirUi() { $("#cbTimeLbl").textContent = cbDir() === "IN" ? "ETA (HH:MM)" : "ETD (HH:MM)"; }
-function cbReset() { cb.rows = null; $("#cbReview").innerHTML = ""; $("#cbStatus").innerHTML = ""; $("#cbSave").hidden = true; $("#cbErr").textContent = ""; }
+const cb = { records: [], parsed: null };
+function cbReset() { cb.parsed = null; $("#cbStatus").innerHTML = ""; $("#cbErr").textContent = ""; }
 
-/* 글자 인식 결과 -> 행. 열 순서는 Flight, Origin, Gate, Pax, CONX 라고 보고 읽습니다. 틀린 값은 아래 확인 표에서 고칩니다. */
-function cbParse(text) {
-  const rows = [];
+/* 리포트 읽기: 리포트의 모든 줄은 DL 편으로 연결되는 "도착" 편입니다.
+   - 항공사 코드가 있는 줄:  "KE 864  0420 PEK -- C F W Y"   (편명, 도착 시각, 출발지, 클래스별 인원)
+   - 항공사 코드가 없는 줄(DL 코드셰어 번호): "7937 GATE ARVL FRM STATUS C F W Y" + "--" 줄 + "TTL ... BAGS" 줄 (TTL 줄의 숫자를 씁니다)
+     ARVL 이 IN 이면 이미 도착했다는 뜻이고, 시각(예: 1655)이면 도착 시각입니다.
+   - 맨 위 합계:  "TTL 15 8 14 67   BAG TTL- 142" */
+function cbParseReport(text) {
+  const out = { report: "", totals: null, inbound: [], carrier: [] };
+  let cur = null, ignored = 0;
   for (const raw of String(text).split(/\r?\n/)) {
-    const line = raw.replace(/[|_\[\]{}<>]/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
-    if (line.length < 6) continue;
-    const fm = line.match(/(^|[^A-Z0-9])([A-Z]{2})\s?0*(\d{1,4})([A-Z])?(?![A-Z0-9])/);
-    if (!fm) continue;
-    const flight = fm[2] + fm[3] + (fm[4] || "");
-    let rest = line.slice(fm.index + fm[0].length).trim();
-    /* CONX: "45", "45 MIN", "0:45", "1:05" 중 줄의 맨 끝쪽 값 */
-    let conx = null;
-    const hm = rest.match(/(\d{1,2}):([0-5]\d)\s*$/);
-    const mm = rest.match(/(\d{1,3})\s*(?:MIN|MINS|M|')?\s*$/);
-    if (hm) { conx = +hm[1] * 60 + +hm[2]; rest = rest.slice(0, hm.index).trim(); }
-    else if (mm) { conx = +mm[1]; rest = rest.slice(0, mm.index).trim(); }
-    const toks = rest.split(" ").filter(Boolean);
-    const origin = [];
-    while (toks.length && /^[A-Z]{2,}$/.test(toks[0]) && !/^(GATE|GT)$/.test(toks[0])) origin.push(toks.shift());
-    if (toks.length && /^(GATE|GT)$/.test(toks[0])) toks.shift();
-    const gate = toks.length > 1 ? toks.shift() : (toks.length === 1 && !/^\d+$/.test(toks[0]) ? toks.shift() : "");
-    const pn = toks.length ? toks.shift().replace(/\D/g, "") : "";
-    rows.push({ flight, origin: origin.join(" ").slice(0, 40), gate: gate.slice(0, 6), pax: pn === "" ? "" : Math.min(+pn, 999), conx: conx == null ? "" : Math.min(conx, 9999) });
-    if (rows.length >= 300) break;
+    const U = raw.toUpperCase().replace(/\s+$/, "");
+    if (!U.trim()) continue;
+    let m;
+    if ((m = U.match(/INBOUND CONNECTIONS TO\s+(\S+)/))) { out.report = m[1].slice(0, 20); continue; }
+    if ((m = U.match(/^\s*TTL\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+).*BAG\s*TTL-?\s*(\d+)/))) { out.totals = { c: +m[1], f: +m[2], w: +m[3], y: +m[4], bags: +m[5] }; continue; }
+    if ((m = U.match(/^\s*([A-Z]{2})\s*(\d{1,4})([A-Z])?\s+(\d{4})\s+([A-Z]{3})\s+(?:--|[A-Z]{2})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*$/))) {
+      cur = null;
+      if (out.carrier.length < 300) out.carrier.push({ flight: m[1] + m[2] + (m[3] || ""), time: m[4], origin: m[5], c: +m[6], f: +m[7], w: +m[8], y: +m[9] });
+      continue;
+    }
+    if ((m = U.match(/^\s*(\d{3,4})(\*{0,2})\s+(.+)$/))) {
+      const toks = m[3].split(/\s+/);
+      const oi = toks.findIndex(t => /^[A-Z]{3}$/.test(t));
+      if (oi < 0) { ignored++; continue; }
+      const pre = toks.slice(0, oi);
+      const arvl = pre.find(t => t === "IN" || /^\d{4}$/.test(t)) || "";
+      const gate = pre.find(t => t !== arvl) || "";
+      const n = toks.slice(oi + 1).filter(t => /^\d+$/.test(t)).map(Number);
+      cur = { flt: m[1], star: m[2].length > 0, frm: toks[oi], arvl, gate: gate.slice(0, 6), c: n[0] || 0, f: n[1] || 0, w: n[2] || 0, y: n[3] || 0, bags: 0 };
+      if (out.inbound.length < 300) out.inbound.push(cur);
+      continue;
+    }
+    if (cur && (m = U.match(/^\s*TTL\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*(\d+)?\s*$/))) { cur.c = +m[1]; cur.f = +m[2]; cur.w = +m[3]; cur.y = +m[4]; cur.bags = m[5] ? +m[5] : 0; cur = null; continue; }
+    if (/^\s*--\s+\d+/.test(U)) continue;
+    ignored++;
   }
-  return rows;
-}
-function cbLoadOcr() {
-  if (window.Tesseract) return Promise.resolve();
-  return new Promise((res, rej) => {
-    const sc = document.createElement("script");
-    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js";
-    sc.onload = () => res(); sc.onerror = () => rej(new Error("The text recognition library could not be loaded. Check the network and try again."));
-    document.head.appendChild(sc);
-  });
-}
-async function cbToCanvas(file) {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("The image could not be opened.")); i.src = url; });
-    const k = Math.min(3, Math.max(1, 2200 / img.width));                                       // 작은 스크린샷은 키워서 읽습니다
-    const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-    const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, c.width, c.height);
-    return c;
-  } finally { URL.revokeObjectURL(url); }
-}
-async function cbRead(file) {
-  const st = $("#cbStatus"), err = $("#cbErr"); err.textContent = "";
-  if (!file) { err.textContent = "Attach a screenshot first."; return; }
-  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { err.textContent = "Please use a PNG, JPG or WebP image."; return; }
-  if (file.size > 8000000) { err.textContent = "The image is too large (maximum 8 MB)."; return; }
-  cb.busy = true; $("#cbRead").disabled = true; $("#cbSave").hidden = true; $("#cbReview").innerHTML = "";
-  try {
-    st.textContent = "Loading the text recognition engine...";
-    await cbLoadOcr();
-    const canvas = await cbToCanvas(file);
-    st.textContent = "Reading the image... (the first run takes longer)";
-    const worker = await Tesseract.createWorker("eng");
-    try {
-      await worker.setParameters({ tessedit_pageseg_mode: "6", preserve_interword_spaces: "1" });
-      const { data } = await worker.recognize(canvas);
-      cb.rows = cbParse(data.text || "");
-    } finally { await worker.terminate(); }
-    st.innerHTML = cb.rows.length ? `Recognized <b>${cb.rows.length}</b> flights. Please check and correct the values, then save.` : "<b>No flights were recognized.</b> Try a larger or sharper screenshot.";
-    cbReview();
-  } catch (e) { st.textContent = ""; err.textContent = e.message || "Recognition failed."; }
-  cb.busy = false; $("#cbRead").disabled = false;
-}
-function cbReview() {
-  const box = $("#cbReview"), rows = cb.rows || [];
-  $("#cbSave").hidden = !rows.length;
-  if (!rows.length) { box.innerHTML = ""; return; }
-  const inp = (i, k, v, w) => `<input data-i="${i}" data-k="${k}" value="${esc(v)}" style="width:${w}" aria-label="${k} ${i + 1}">`;
-  box.innerHTML = `<table><thead><tr><th>Flight</th><th>Origin city</th><th>Gate</th><th>Total pax</th><th>CONX (min)</th><th></th></tr></thead><tbody>` +
-    rows.map((r, i) => `<tr><td>${inp(i, "flight", r.flight, "92px")}</td><td>${inp(i, "origin", r.origin, "100%")}</td><td>${inp(i, "gate", r.gate, "70px")}</td><td>${inp(i, "pax", r.pax, "80px")}</td><td>${inp(i, "conx", r.conx, "80px")}</td><td><button type="button" class="btn ghost cb-x" data-del="${i}" aria-label="Remove row ${i + 1}">&times;</button></td></tr>`).join("") +
-    `</tbody></table>`;
-}
-function cbClean() {
-  const out = [];
-  for (const r of cb.rows || []) {
-    const flight = String(r.flight).toUpperCase().replace(/\s+/g, "");
-    if (!CB_FLIGHT.test(flight)) continue;
-    const n = (v, max) => { const t = String(v).trim(); if (t === "" || !/^\d+$/.test(t)) return null; return Math.min(+t, max); };
-    out.push({ flight, origin: String(r.origin).trim().slice(0, 40), gate: String(r.gate).trim().toUpperCase().slice(0, 6), pax: n(r.pax, 999), conx: n(r.conx, 9999) });
-  }
+  out.ignored = ignored;
   return out;
 }
+
+/* Gate Planner 데이터에서 도착편 찾기. 7937 같은 번호는 DL 코드셰어 번호이므로 data.js 의 cs(코드셰어 편명) 목록도 봅니다. */
+const cbNorm = f => String(f || "").toUpperCase().replace(/\s+/g, "").replace(/^([A-Z0-9]{2})0+(?=\d)/, "$1");
+const cbTod = m => ((m % 1440) + 1440) % 1440;
+function cbFindArr(key, hhmm, etd, isIn) {
+  const c = (state.flights || []).filter(l => l.dir === "ARR" && (cbNorm(l.flight) === key || (l.cs || []).some(n => cbNorm(n) === key)));
+  if (!c.length) return null;
+  if (/^\d{4}$/.test(hhmm)) {                                                  // 시각이 있으면 예정 시각이 90분 안인 편만 (같은 편명이 날마다 있으므로)
+    const t = +hhmm.slice(0, 2) * 60 + +hhmm.slice(2);
+    const near = c.filter(l => { const k = Math.abs(cbTod(l.sched) - t); return Math.min(k, 1440 - k) <= 90; });
+    return near.length ? near.sort((a, b) => Math.abs(eff(a) - etd) - Math.abs(eff(b) - etd))[0] : null;   // 그중 ETD 에 가장 가까운 날짜
+  }
+  if (isIn) { const past = c.filter(l => eff(l) <= state.now + 30); return (past.length ? past : c).sort((a, b) => eff(b) - eff(a))[0]; }   // IN: 가장 최근에 도착한 편
+  return c.sort((a, b) => Math.abs(eff(a) - etd) - Math.abs(eff(b) - etd))[0];
+}
+/* 도착편 목록 만들기: 코드 없는 DL 번호 편은 같은 항공편(코드 있는 편)이 있으면 합산합니다.
+   같은 편 판단: 1) Gate Planner 데이터에서 같은 항공편으로 찾아질 때  2) 데이터가 없으면 출발지가 같고 도착 시각이 30분 안일 때
+   3) 데이터가 없고 IN 이면 같은 출발지의 코드 있는 편이 하나뿐일 때 */
+function cbBuild(d, etd) {
+  const hm = h => /^\d{4}$/.test(h) ? +h.slice(0, 2) * 60 + +h.slice(2) : null;
+  const tdiff = (x, y) => { const k = Math.abs(x - y); return Math.min(k, 1440 - k); };
+  const car = (d.carrier || []).map(r => ({ r, leg: cbFindArr(cbNorm(r.flight), r.time, etd, false), nums: [] }));
+  const alone = [];
+  for (const r of d.inbound || []) {
+    const leg = cbFindArr("DL" + String(r.flt).replace(/^0+/, ""), r.arvl, etd, r.arvl === "IN");
+    let host = null;
+    if (leg) host = car.find(k => k.leg && (k.leg === leg || (cbNorm(k.leg.flight) === cbNorm(leg.flight) && k.leg.sched === leg.sched)));
+    if (!host && !leg) {
+      const sameFrm = car.filter(k => k.r.origin === r.frm);
+      const t = hm(r.arvl);
+      host = t != null ? sameFrm.find(k => tdiff(hm(k.r.time), t) <= 30) : (r.arvl === "IN" && sameFrm.length === 1 ? sameFrm[0] : null);
+    }
+    if (host) host.nums.push({ r, leg }); else alone.push({ r, leg });
+  }
+  const rows = [];
+  for (const k of car) {
+    const all = [k.r, ...k.nums.map(n => n.r)];
+    const sum = key => all.reduce((a, x) => a + (+x[key] || 0), 0);
+    const bagKnown = k.nums.length > 0;
+    rows.push({ label: k.r.flight, cs: k.nums.map(n => "DL" + n.r.flt), star: k.nums.some(n => n.r.star), frm: k.r.origin, leg: k.leg || (k.nums.find(n => n.leg) || {}).leg || null,
+      fileTime: k.r.time, c: sum("c"), f: sum("f"), w: sum("w"), y: sum("y"), bags: bagKnown ? k.nums.reduce((a, n) => a + n.r.bags, 0) : null, isIn: false });
+  }
+  for (const x of alone) rows.push({ label: "DL" + x.r.flt, cs: [], star: x.r.star, frm: x.r.frm, leg: x.leg, fileTime: /^\d{4}$/.test(x.r.arvl) ? x.r.arvl : "", c: x.r.c, f: x.r.f, w: x.r.w, y: x.r.y, bags: x.r.bags, isIn: x.r.arvl === "IN" });
+  return rows.map(x => {
+    let eta = x.leg ? eff(x.leg) : null, src = x.leg ? "api" : "";
+    if (eta == null && /^\d{4}$/.test(x.fileTime)) { eta = Math.floor(etd / 1440) * 1440 + hm(x.fileTime); if (eta > etd) eta -= 1440; src = "file"; }
+    return Object.assign(x, { eta, src, conx: eta == null ? null : etd - eta, pax: x.c + x.f + x.w + x.y });
+  });
+}
+function cbPreview() {
+  const p = cb.parsed, el = $("#cbStatus");
+  if (!p) { el.innerHTML = ""; return; }
+  if (!p.inbound.length && !p.carrier.length) { el.innerHTML = "<b>No connecting flights were recognized.</b> Please check the file."; return; }
+  const all = [...p.inbound, ...p.carrier];
+  const pax = all.reduce((a, r) => a + r.c + r.f + r.w + r.y, 0), bags = p.inbound.reduce((a, r) => a + r.bags, 0);
+  el.innerHTML = `Recognized <b>${p.carrier.length}</b> flights with an airline code and <b>${p.inbound.length}</b> DL-numbered (codeshare) flights, <b>${pax}</b> pax in total${p.report ? ` · report ${esc(p.report)}` : ""}. Codeshare flights are added to the matching flight when the board is shown. Lines not read: ${p.ignored}.`;
+}
+
 async function cbSave() {
   const err = $("#cbErr"); err.textContent = "";
   const num = $("#cbFlight").value.trim().toUpperCase().replace(/^DL/, "");
-  if (!/^[0-9]{1,4}[A-Z]?$/.test(num)) { err.textContent = "Enter the DL flight number, for example 188."; return; }
+  if (!/^[0-9]{1,4}[A-Z]?$/.test(num)) { err.textContent = "Enter the DL departure flight number, for example 188."; return; }
   const t = normEta($("#cbTime").value);
-  if (!t) { err.textContent = `Enter the ${cbDir() === "IN" ? "ETA" : "ETD"} as HH:MM, for example 14:35.`; return; }
-  const rows = cbClean();
-  if (!rows.length) { err.textContent = "There is no valid flight row to save."; return; }
-  const flight = "DL" + num, dir = cbDir();
+  if (!t) { err.textContent = "Enter the ETD as HH:MM, for example 14:35."; return; }
+  if (!cb.parsed) { err.textContent = "Attach the inbound connection report (.txt) first."; return; }
+  if (!cb.parsed.inbound.length && !cb.parsed.carrier.length) { err.textContent = "No connecting flights were recognized in the attached file."; return; }
+  const flight = "DL" + num, d = cb.parsed;
   $("#cbSave").disabled = true;
   try {
-    const saved = await SB.rest("connection_boards", { method: "POST", body: { direction: dir, dl_flight: flight, time_hhmm: t, time_at: resolveEta(t).toISOString(), rows }, prefer: "return=representation" });
+    const saved = await SB.rest("dl_conx_boards", { method: "POST", body: { dl_flight: flight, etd_hhmm: t, etd_at: resolveEta(t).toISOString(), report_date: d.report, data: { totals: d.totals, inbound: d.inbound, carrier: d.carrier } }, prefer: "return=representation" });
     const id = saved && saved[0] && saved[0].id;
-    if (id) await SB.rest(`connection_boards?dl_flight=eq.${encodeURIComponent(flight)}&direction=eq.${dir}&id=neq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=minimal" });   // 같은 편명·방향의 이전 입력은 지웁니다
+    if (id) await SB.rest(`dl_conx_boards?dl_flight=eq.${encodeURIComponent(flight)}&id=neq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=minimal" });   // 같은 편명의 이전 입력은 지웁니다
     $("#cbFile").value = ""; cbReset(); await cbRefresh();
   } catch (e) { cbHandleError(e); }
   $("#cbSave").disabled = false;
 }
 function cbHandleError(e) {
   if (/session expired|not signed in/i.test(e.message)) { cb.records = []; cbRender(); cpAuthUi(); $("#cpLoginErr").textContent = "Your session has expired. Please sign in again."; }
-  else $("#cbErr").textContent = /connection_boards/.test(e.message) ? "The connection_boards table is not set up yet. Please run the SQL script in Supabase." : e.message;
+  else $("#cbErr").textContent = /dl_conx_boards/.test(e.message) ? "The dl_conx_boards table is not set up yet. Please run the SQL script in Supabase." : e.message;
 }
 async function cbRefresh() {
-  try { cb.records = (await SB.rest("connection_boards?select=*&order=created_at.desc")) || []; cbRender(); }
+  try { cb.records = (await SB.rest("dl_conx_boards?select=*&order=created_at.desc")) || []; cbRender(); }
   catch (e) { cbHandleError(e); }
 }
-/* FIDS 전광판: 보드 하나가 DL 편명 하나입니다. CONX 가 짧은 편이 위에 옵니다. */
+
+/* FIDS 전광판: 보드 하나가 DL 출발편 하나입니다. CONX = 입력한 ETD - 각 도착편 ETA (Gate Planner 데이터) */
 function cbRender() {
   const box = $("#cbBoards");
   if (SB.session) $("#cbUser").textContent = SB.session.email;
-  if (!cb.records.length) { box.innerHTML = `<div class="cp-empty">No connection boards yet. Fill in the form above and attach a screenshot.</div>`; return; }
+  if (!cb.records.length) { box.innerHTML = `<div class="cp-empty">No connection boards yet. Enter the DL flight and ETD, attach the .txt report and press Save.</div>`; return; }
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
   box.innerHTML = cb.records.map(b => {
-    const rows = (b.rows || []).slice().sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
-    const body = rows.map(r => {
-      const st = r.conx == null ? null : cxStatus(r.conx);
-      return `<tr${st ? ` class="x-${st.cls}"` : ""}><td class="fl">${esc(r.flight)}</td><td>${esc(r.origin || "—")}</td><td>${esc(r.gate || "—")}</td><td class="n">${r.pax == null ? "—" : esc(r.pax)}</td><td class="n cx">${r.conx == null ? "—" : esc(r.conx) + " min"}</td></tr>`;
+    const d = b.data || {};
+    const etd = Math.round((new Date(b.etd_at).getTime() - midnight.getTime()) / 60000);
+    const rows = cbBuild(d, etd).sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
+    const body = rows.map(x => {
+      const st = x.conx == null ? null : (x.conx < 30 ? { cls: "mis" } : cxStatus(x.conx));
+      const city = x.leg && CITY[x.leg.apt] ? CITY[x.leg.apt] : (CITY[x.frm] || "");
+      return `<tr${st ? ` class="x-${st.cls}"` : ""}><td class="fl">${esc(x.label)}${x.cs.length ? `<small> ${esc(x.cs.join(" "))}</small>` : ""}${x.star ? `<small title="Marked ** in the report"> **</small>` : ""}</td>
+        <td>${esc(x.frm)}${city ? `<small> ${esc(city)}</small>` : ""}</td>
+        <td>${x.leg ? esc(x.leg.gate || "—") : `<small>N/A</small>`}</td>
+        <td>${x.eta == null ? `<small>${x.isIn ? "arrived (time N/A)" : "N/A"}</small>` : fmt(x.eta)}${x.src === "file" ? `<small> file</small>` : x.leg && eff(x.leg) !== x.leg.sched ? `<small> STA ${fmt(x.leg.sched)}</small>` : ""}${x.leg && x.leg.actual != null ? `<small> landed</small>` : ""}</td>
+        <td class="n">${x.pax}<small> C${x.c} F${x.f} W${x.w} Y${x.y}</small></td><td class="n">${x.bags == null ? "—" : x.bags}</td>
+        <td class="n cx">${x.conx == null ? "—" : x.conx + " min"}</td></tr>`;
     }).join("");
+    const pax = rows.reduce((a, x) => a + x.pax, 0), bags = rows.reduce((a, x) => a + (x.bags || 0), 0);
     const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
     return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">
-      <div class="fids-head"><h3>${esc(b.dl_flight)}<small>${b.direction === "IN" ? "INBOUND · ETA" : "OUTBOUND · ETD"} ${esc(b.time_hhmm)}</small></h3>
-        <div class="fids-meta">Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>
-      <div class="tablewrap"><table><thead><tr><th>Flight</th><th>Origin city</th><th>Gate</th><th class="n">Total pax</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="5" class="fids-empty">No flights.</td></tr>`}</tbody></table></div>
+      <div class="fids-head"><h3>${esc(b.dl_flight)}<small>CONNECTING ARRIVALS · ETD ${esc(b.etd_hhmm)}</small></h3>
+        <div class="fids-meta">${rows.length} flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Arriving flight</th><th>From</th><th>Gate</th><th>ETA</th><th class="n">Total pax</th><th class="n">Bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No flights.</td></tr>`}</tbody></table></div>
     </div>`;
   }).join("");
 }
 
-document.querySelectorAll('input[name="cbDir"]').forEach(r => r.addEventListener("change", () => { cbDirUi(); }));
-$("#cbForm").addEventListener("submit", e => { e.preventDefault(); if (!cb.busy) cbRead($("#cbFile").files[0]); });
-$("#cbFile").addEventListener("change", () => { cbReset(); });
-$("#cbSave").addEventListener("click", cbSave);
+$("#cbForm").addEventListener("submit", e => { e.preventDefault(); cbSave(); });
+$("#cbFile").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0];
+  cbReset();
+  if (!f) return;
+  if (f.size > 1000000) { $("#cbErr").textContent = "The file is too large (maximum 1 MB)."; return; }
+  try { cb.parsed = cbParseReport(await f.text()); } catch (x) { cb.parsed = null; $("#cbErr").textContent = "The file could not be read."; }
+  cbPreview();
+});
 $("#cbRefresh").addEventListener("click", cbRefresh);
-$("#cbReview").addEventListener("input", e => { const t = e.target; if (t && t.dataset && t.dataset.k && cb.rows && cb.rows[+t.dataset.i]) cb.rows[+t.dataset.i][t.dataset.k] = t.value; });
-$("#cbReview").addEventListener("click", e => { const b = e.target.closest("button[data-del]"); if (!b || !cb.rows) return; cb.rows.splice(+b.dataset.del, 1); cbReview(); });
 $("#cbBoards").addEventListener("click", async e => {
   const b = e.target.closest("button[data-bid]"); if (!b) return;
   if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Confirm discard"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "Discard now"; }, 4000); return; }
-  try { await SB.rest(`connection_boards?id=eq.${encodeURIComponent(b.dataset.bid)}`, { method: "DELETE", prefer: "return=minimal" }); await cbRefresh(); }
+  try { await SB.rest(`dl_conx_boards?id=eq.${encodeURIComponent(b.dataset.bid)}`, { method: "DELETE", prefer: "return=minimal" }); await cbRefresh(); }
   catch (err) { cbHandleError(err); }
 });
-document.addEventListener("paste", e => {                                        // 스크린샷을 Ctrl+V 로 바로 붙여 넣기 (Data upload 화면에서만)
-  if ($("#cpUp").hidden || $("#viewConn").hidden) return;
-  const it = [...(e.clipboardData && e.clipboardData.items || [])].find(x => x.kind === "file" && /^image\//.test(x.type));
-  if (!it) return;
-  const f = it.getAsFile(); if (!f) return;
-  const dt = new DataTransfer(); dt.items.add(f); $("#cbFile").files = dt.files; cbReset();
-  $("#cbStatus").textContent = "Image pasted. Press Read image.";
-});
 setInterval(() => { if (!$("#viewConn").hidden && cpSub() === "up" && SB.session && !SB.problem()) cbRefresh(); }, 30000);
-cbDirUi(); cbRender();
+cbRender();
 
 /* ---- Gate Planner ver2: 로그인한 사용자에게만 보이는 Gate Planner + 환승 현황 배지 ----
    화면은 기존 Gate Planner 와 같고, 로그인 세션(SB)은 Connection Planner 와 공유합니다.
