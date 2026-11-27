@@ -382,8 +382,16 @@ body.chat-open .chat-toggle { display: none; }
 
 .panel.soon { margin-top: -52px; position: relative; padding: 56px 24px; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.16); border-radius: 6px; }
 .panel.soon .empty b { font-size: 20px; color: var(--ink); }
-body.view-conn .chat, body.view-conn .chat-toggle { display: none !important; }
-body.view-conn { padding-right: 0 !important; }
+body.view-conn .chat, body.view-conn .chat-toggle, body.view-login .chat, body.view-login .chat-toggle { display: none !important; }
+body.view-conn, body.view-login { padding-right: 0 !important; }
+
+/* Gate Planner ver2: 로그인 후에만 보이는 화면 + 환승 현황 배지 */
+.v2bar { display: none; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 24px; padding: 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; font-size: 13px; color: var(--muted); }
+body.ver2 .v2bar { display: flex; }
+.v2bar .cp-user { padding-bottom: 0; }
+.cxb { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; background: #fff; color: #12294a; font-size: 10.5px; font-weight: 700; line-height: 15px; white-space: nowrap; border: 1px solid rgba(0, 0, 0, 0.25); }
+.tip .t-cx { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; }
+.tip .t-cx b { font-size: 13px; }
 
 /* Connection Planner: 로그인과 자료 입력 (Supabase) */
 .cp-card { margin-top: -52px; position: relative; max-width: 460px; padding: 28px; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.16); border-radius: 6px; }
@@ -491,6 +499,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
     <nav class="nav" aria-label="주 메뉴">
       <a href="#gate" data-view="gate" aria-current="page">Gate Planner</a>
       <a href="#connection" data-view="connection">Connection Planner</a>
+      <a href="#gate2" data-view="gate2">Gate Planner ver2</a>
     </nav>
   </div>
 </header>
@@ -509,6 +518,15 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
 
 <main>
   <div class="wrap">
+
+    <div class="v2bar" id="v2bar">
+      <span>Gate Planner ver2 (test) · Passenger and bag numbers are shown only to signed-in users.</span>
+      <div class="cp-user">
+        <span id="v2User"></span>
+        <button type="button" class="btn ghost small" id="v2Refresh">Refresh</button>
+        <button type="button" class="btn ghost small" id="v2SignOut">Sign out</button>
+      </div>
+    </div>
 
     <form class="controls" id="controls" aria-label="조회 조건">
       <div class="field f-search">
@@ -548,6 +566,30 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
     </section>
 
 
+  </div>
+</main>
+</div>
+
+<div id="viewG2Login" hidden>
+<section class="hero">
+  <div class="wrap">
+    <h1>T2 Gate Planner ver2</h1>
+  </div>
+</section>
+<main>
+  <div class="wrap">
+    <section class="panel cp-card" id="g2Login">
+      <form id="g2Form" autocomplete="on">
+        <h2>Sign in</h2>
+        <p>Use the same account as the Connection Planner.</p>
+        <label for="g2Email">Email</label>
+        <input type="email" id="g2Email" autocomplete="username" required>
+        <label for="g2Password">Password</label>
+        <input type="password" id="g2Password" autocomplete="current-password" required>
+        <div class="cp-err" id="g2Err" role="alert"></div>
+        <button class="btn" type="submit" id="g2Btn">Sign in</button>
+      </form>
+    </section>
   </div>
 </main>
 </div>
@@ -1027,8 +1069,10 @@ function barHtml(it) {
   if (it.st === "active" && state.now > s && state.now < e) tail = `<i class="tail" style="left:${((state.now - s) / STEP) * u}px"></i>`;
   const label = `${it.reg} ${it.type}, 게이트 ${it.gate || "미배정"}, ${fmt(it._s)}부터 ${fmt(it._e)}까지`;
   const top = un ? `;top:${2 + it.ulane * 30}px` : "";
+  const cxs = v2On() ? v2Conn(it) : null;
+  const badge = cxs ? `<span class="cxb" title="Connecting passengers and bags from ${esc(cxs.rec.arrival_flight)}">Pax ${cxs.pax} · Bags ${cxs.bags}</span>` : "";
   return `<button class="${cls}" style="left:${left}px;width:${width}px${top}" data-i="${it._i}" data-hay="${esc(hay)}" aria-label="${esc(label)}">
-    <div class="b1"><b>${esc(it.reg)}</b><span>${esc(it.type)}</span></div>
+    <div class="b1"><b>${esc(it.reg)}</b><span>${esc(it.type)}</span>${badge}</div>
     <div class="b2">${flights}<span class="rt">${route}</span></div>
     <div class="b3">${route}</div>${tail}</button>`;
 }
@@ -1064,6 +1108,7 @@ function tipHtml(it) {
     ${kindNote ? `<div class="t-foot" style="border-top:0;margin-top:4px;padding-top:0">${kindNote}</div>` : ""}
     ${!it.gate ? `<div class="t-foot" style="border-top:0;margin-top:4px;padding-top:0">게이트가 아직 배정되지 않은 항공편입니다.</div>` : ""}
     ${it.conflict ? `<div class="t-warn">같은 게이트의 앞뒤 항공기와 점유 시간이 겹칩니다.</div>` : ""}
+    ${v2Tip(it)}
     <div class="t-foot">막대 구간은 실제 시각이 있으면 실제, 없으면 변경, 변경도 없으면 예정 시각 기준입니다.</div>`;
 }
 let tipOn = false;
@@ -1606,10 +1651,11 @@ function cpHandleError(e) {
   if (/session expired|not signed in/i.test(e.message)) {
     cp.records = []; cxRender(); cpAuthUi();
     $("#cpLoginErr").textContent = "Your session has expired. Please sign in again.";
+    if (currentView() === "gate2") showView("gate2");
   } else $("#cxErr").textContent = e.message;
 }
 async function cpRefresh() {
-  try { cp.records = (await SB.rest("arrival_connections?select=*&order=created_at.desc")) || []; cxRender(); }
+  try { cp.records = (await SB.rest("arrival_connections?select=*&order=created_at.desc")) || []; cxRender(); v2Rerender(); }
   catch (e) { cpHandleError(e); }
 }
 function cpEnter() { SB.load(); cpAuthUi(); if (SB.session && !SB.problem()) cpRefresh(); }
@@ -1866,18 +1912,72 @@ if (window.__icnMock) {
 }
 setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cpRefresh(); }, 30000);
 
-function currentView() { return (typeof location !== "undefined" && location.hash === "#connection") ? "connection" : "gate"; }
+/* ---- Gate Planner ver2: 로그인한 사용자에게만 보이는 Gate Planner + 환승 현황 배지 ----
+   화면은 기존 Gate Planner 와 같고, 로그인 세션(SB)은 Connection Planner 와 공유합니다.
+   환승객·가방 숫자는 Supabase(arrival_connections)에서 로그인 후에만 읽어 오며, data.js 에는 들어 있지 않습니다. */
+const v2On = () => document.body.classList.contains("ver2");
+const cxKey = f => String(f || "").toUpperCase().replace(/^([A-Z0-9]{2})0+(?=\d)/, "$1");
+function v2Rec(it) {
+  if (!it || !it.arr || !cp.records.length) return null;
+  const k = cxKey(it.arr.flight), t = eff(it.arr), midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  let best = null, bd = 1e9;
+  for (const rec of cp.records) {
+    const a = cxKey(rec.arrival_flight);
+    if (!(a === k || (k.length === a.length + 1 && k.startsWith(a) && /[A-Z]/.test(k[k.length - 1])))) continue;
+    const d = Math.abs(Math.round((new Date(rec.eta_at).getTime() - midnight.getTime()) / 60000) - t);   // 같은 편명이 어제·내일에도 있으므로 ETA 가 가장 가까운 기록만 사용
+    if (d <= 360 && d < bd) { best = rec; bd = d; }
+  }
+  return best;
+}
+function v2Conn(it) {
+  const rec = v2Rec(it); if (!rec) return null;
+  const rows = rec.rows || [];
+  return { rec, n: rows.length, pax: rows.reduce((a, r) => a + (+r.pax || 0), 0), bags: rows.reduce((a, r) => a + (+r.bags || 0), 0) };
+}
+function v2Tip(it) {
+  if (!v2On()) return "";
+  const c = v2Conn(it); if (!c) return "";
+  const list = (c.rec.rows || []).slice().sort((a, b) => b.pax - a.pax).slice(0, 8)
+    .map(r => `${esc(r.flight)} ${esc(r.dest || "—")}${r.std ? " " + esc(r.std) : ""}: ${r.pax} pax / ${r.bags} bags`).join("<br>");
+  return `<div class="t-cx"><b>Connections from ${esc(c.rec.arrival_flight)}</b> (ETA ${esc(c.rec.eta_time)})<br>${c.n} flights, ${c.pax} pax, ${c.bags} bags<br>${list}${c.n > 8 ? `<br>+${c.n - 8} more` : ""}</div>`;
+}
+function v2Rerender(force) {
+  if ((!force && !v2On()) || !state.items || !state.items.length || $("#viewGate").hidden) return;
+  const x = gantt.scrollLeft, y = gantt.scrollTop;
+  renderChart(); gantt.scrollLeft = x; gantt.scrollTop = y;
+}
+$("#g2Form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("#g2Err"), btn = $("#g2Btn"); err.textContent = ""; btn.disabled = true;
+  try { await SB.signIn($("#g2Email").value.trim(), $("#g2Password").value); $("#g2Password").value = ""; showView("gate2"); }
+  catch (ex) { err.textContent = ex.message; $("#g2Password").value = ""; await sleep(500); }
+  btn.disabled = !!SB.problem();
+});
+$("#v2Refresh").addEventListener("click", cpRefresh);
+$("#v2SignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; cxRender(); showView("gate2"); });
+setInterval(() => { if (v2On() && SB.session && !SB.problem()) cpRefresh(); }, 30000);
+
+function currentView() { const h = typeof location !== "undefined" ? location.hash : ""; return h === "#connection" ? "connection" : h === "#gate2" ? "gate2" : "gate"; }
 function showView(name) {
-  const conn = name === "connection";
+  const conn = name === "connection", g2 = name === "gate2";
+  if (g2 && !SB.session) SB.load();
+  const signed = !!SB.session && !SB.problem();
+  const login = g2 && !signed, ver2 = g2 && signed, wasV2 = v2On();
   if (conn && !$("#viewGate").hidden) state.sv = { x: gantt.scrollLeft, y: gantt.scrollTop };      // 게이트 화면의 스크롤 위치 기억
-  $("#viewGate").hidden = conn;
+  $("#viewGate").hidden = conn || login;
+  $("#viewG2Login").hidden = !login;
   $("#viewConn").hidden = !conn;
   document.body.classList.toggle("view-conn", conn);
+  document.body.classList.toggle("view-login", login);
+  document.body.classList.toggle("ver2", ver2);
   document.querySelectorAll(".nav a").forEach(a => {
     if (a.dataset.view === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
+  if (login) { const pr = SB.problem(); $("#g2Btn").disabled = !!pr; if (pr) $("#g2Err").textContent = pr; }
   if (conn) cpEnter();
-  if (!conn) {
+  if (ver2) { $("#v2User").textContent = SB.session.email; cpRefresh(); }
+  if (!conn && !login) {
+    if (wasV2 !== ver2) v2Rerender(true);                                         // 배지 표시를 켜거나 끌 때 차트를 다시 그립니다
     if (state.pendingInit) { initialScroll(); state.pendingInit = false; }
     else if (state.sv) { gantt.scrollLeft = state.sv.x; gantt.scrollTop = state.sv.y; }
   }
