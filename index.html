@@ -2060,8 +2060,43 @@ function cbParseReport(text) {
     ignored++;
   }
   out.ignored = ignored;
+  out.kind = "OUT";
   return out;
 }
+
+/* Inbound 보드용 리포트: "OUTBOUND - CONNECTING FROM 173/27NOV IN ICN" (DL173 도착편에서 환승하는 승객이 타는 출발편 목록)
+   헤더 "FLT GATE DPRT TO F Y BAGS" 의 열 이름 순서대로 TO 뒤의 숫자를 읽습니다. 한 줄이 출발편 하나입니다.
+   항공사 코드가 없는 번호(7872)는 DL 코드셰어 번호입니다. 결과는 OUT 리포트와 같은 모양(inbound = 코드 없는 편, carrier = 코드 있는 편)으로 돌려줍니다. */
+function cbParseConnFrom(text) {
+  const out = { kind: "IN", report: "", flightNo: "", totals: null, inbound: [], carrier: [], ignored: 0 };
+  let cols = ["F", "Y", "BAGS"];
+  for (const raw of String(text).split(/\r?\n/)) {
+    const U = raw.toUpperCase().replace(/\s+$/, "");
+    if (!U.trim()) continue;
+    let m;
+    if ((m = U.match(/CONNECTING\s+FROM\s+(\d{1,4}[A-Z]?)\s*\/\s*(\S+)/))) {
+      out.flightNo = m[1]; out.report = m[2].slice(0, 20);
+      const t = U.match(/TTL-?\s*(\d+)/); if (t) out.totals = { pax: +t[1], bags: 0 };
+      continue;
+    }
+    if ((m = U.match(/BAG\s*TTL-?\s*(\d+)/))) { out.totals = Object.assign(out.totals || { pax: 0 }, { bags: +m[1] }); continue; }
+    if (/\bFLT\b/.test(U) && /\bTO\b/.test(U)) {                              // 머리글: TO 뒤의 열 이름 순서
+      const names = (U.slice(U.search(/\bTO\b/) + 2).match(/\b(F|C|W|Y|BAGS?)\b/g) || []).map(x => x.startsWith("BAG") ? "BAGS" : x);
+      if (names.length && names.includes("BAGS")) cols = names;
+      continue;
+    }
+    m = U.match(/^\s*(?:([A-Z]{2})\s*)?(\d{1,4}[A-Z]?)(\*{0,2})\s+(?:([A-Z]?\d{1,3}[A-Z]?)\s+)?(\d{4})\s+([A-Z]{3})((?:\s+\d+)+)\s*$/);
+    if (!m) { out.ignored++; continue; }
+    const nums = m[7].trim().split(/\s+/).map(Number), v = { F: 0, C: 0, W: 0, Y: 0, BAGS: 0 };
+    if (nums.length === cols.length) cols.forEach((k, i) => { v[k] = nums[i]; });
+    else { v.BAGS = nums[nums.length - 1]; nums.slice(0, -1).forEach((n, i) => { v[cols.filter(k => k !== "BAGS")[i] || "Y"] += n; }); }
+    const row = { c: v.C, f: v.F, w: v.W, y: v.Y, bags: v.BAGS };
+    if (m[1]) { if (out.carrier.length < 300) out.carrier.push(Object.assign({ flight: m[1] + m[2], time: m[5], origin: m[6] }, row)); }
+    else if (out.inbound.length < 300) out.inbound.push(Object.assign({ flt: m[2], star: m[3].length > 0, frm: m[6], arvl: m[5], gate: (m[4] || "").slice(0, 6) }, row));
+  }
+  return out;
+}
+function cbParseAny(text) { return /CONNECTING\s+FROM/i.test(text) ? cbParseConnFrom(text) : cbParseReport(text); }
 
 /* Gate Planner 데이터(공공데이터 API)에서 연결편 찾기
    - 7937 같은 번호는 DL 코드셰어 번호입니다. 스크립트가 data.js 에 실제 운항사 편명(flight)과 코드셰어 편명 목록(cs)을 함께 담으므로,
@@ -2113,7 +2148,7 @@ function cbBuild(d, ref, dir) {
     const all = [k.r, ...k.nums.map(n => n.r)];
     const sum = key => all.reduce((a, x) => a + (+x[key] || 0), 0);
     rows.push({ label: k.r.flight, cs: k.nums.map(n => "DL" + n.r.flt), star: k.nums.some(n => n.r.star), frm: k.r.origin, leg: k.leg || (k.nums.find(n => n.leg) || {}).leg || null,
-      fileTime: k.r.time, c: sum("c"), f: sum("f"), w: sum("w"), y: sum("y"), bags: k.nums.length ? k.nums.reduce((a, n) => a + n.r.bags, 0) : null, isIn: false });
+      fileTime: k.r.time, c: sum("c"), f: sum("f"), w: sum("w"), y: sum("y"), bags: (k.r.bags != null || k.nums.length) ? (k.r.bags || 0) + k.nums.reduce((a, n) => a + n.r.bags, 0) : null, isIn: false });
   }
   for (const x of alone) rows.push({ label: x.leg ? x.leg.flight : "DL" + x.r.flt, cs: x.leg ? ["DL" + x.r.flt] : [], star: x.r.star, frm: x.r.frm, leg: x.leg,   // 실제 운항사 편명을 찾았으면 그 편명으로 표시
     fileTime: /^\d{4}$/.test(x.r.arvl) ? x.r.arvl : "", c: x.r.c, f: x.r.f, w: x.r.w, y: x.r.y, bags: x.r.bags, isIn: x.r.arvl === "IN" && dir === "OUT" });
@@ -2128,16 +2163,24 @@ function cbBuild(d, ref, dir) {
   });
 }
 function cbPreview() {
-  const p = cb.parsed, el = $("#cbStatus");
+  const p = cb.parsed, el = $("#cbStatus"), err = $("#cbErr");
   if (!p) { el.innerHTML = ""; return; }
   if (!p.inbound.length && !p.carrier.length) { el.innerHTML = "<b>No connecting flights were recognized.</b> Please check the file."; return; }
   const all = [...p.inbound, ...p.carrier];
-  const pax = all.reduce((a, r) => a + r.c + r.f + r.w + r.y, 0), bags = p.inbound.reduce((a, r) => a + r.bags, 0);
-  el.innerHTML = `Recognized <b>${p.carrier.length}</b> flights with an airline code and <b>${p.inbound.length}</b> DL-numbered (codeshare) flights, <b>${pax}</b> pax and <b>${bags}</b> bags${p.report ? ` · report ${esc(p.report)}` : ""}. Codeshare flights are matched to the operating flight and added to the same flight when the board is shown. Lines not read: ${p.ignored}.`;
+  const pax = all.reduce((a, r) => a + r.c + r.f + r.w + r.y, 0), bags = all.reduce((a, r) => a + (r.bags || 0), 0);
+  el.innerHTML = `Recognized <b>${all.length}</b> connecting flights (<b>${p.carrier.length}</b> with an airline code, <b>${p.inbound.length}</b> DL-numbered codeshare), <b>${pax}</b> pax and <b>${bags}</b> bags${p.report ? ` · report ${esc(p.report)}` : ""}. Codeshare flights are matched to the operating flight and added to the same flight when the board is shown.${p.ignored ? ` Lines not read: ${p.ignored}.` : ""}`;
+  err.textContent = "";
+  const want = cbDir() === "OUT" ? "OUT" : "IN";
+  if (p.kind && p.kind !== want) err.textContent = p.kind === "IN" ? "This report is for an Inbound board (connecting departures). Select Inbound." : "This report is for an Outbound board (connecting arrivals). Select Outbound.";
+  else if (p.kind === "IN" && p.flightNo) {
+    const typed = $("#cbFlight").value.trim().toUpperCase().replace(/^DL/, "").replace(/^0+/, "");
+    if (typed && typed !== p.flightNo.replace(/^0+/, "")) err.textContent = `The report is for DL${p.flightNo}, but you entered DL${typed}. Please check.`;
+  }
 }
 
 function cbDir() { const r = document.querySelector('input[name="cbDir"]:checked'); return r ? r.value : "IN"; }
 function cbDirUi() {
+  if (cb.parsed) cbPreview();
   const out = cbDir() === "OUT";
   $("#cbFlightLbl").textContent = out ? "DL departure flight" : "DL arrival flight";
   $("#cbTimeLbl").textContent = out ? "ETD (HH:MM)" : "ETA (HH:MM)";
@@ -2152,6 +2195,7 @@ async function cbSave() {
   if (!cb.parsed) { err.textContent = "Attach the connection report (.txt) first."; return; }
   if (!cb.parsed.inbound.length && !cb.parsed.carrier.length) { err.textContent = "No connecting flights were recognized in the attached file."; return; }
   const flight = "DL" + num, d = cb.parsed;
+  if (d.kind && d.kind !== dir) { err.textContent = d.kind === "IN" ? "This report is for an Inbound board. Select Inbound." : "This report is for an Outbound board. Select Outbound."; return; }
   $("#cbSave").disabled = true;
   try {
     const saved = await SB.rest("dl_conx_boards", { method: "POST", body: { direction: dir, dl_flight: flight, time_hhmm: t, time_at: resolveEta(t).toISOString(), report_date: d.report, data: { totals: d.totals, inbound: d.inbound, carrier: d.carrier } }, prefer: "return=representation" });
@@ -2178,22 +2222,34 @@ function cbBoardHtml(b, midnight) {
   const built = cbBuild(d, ref, b.direction).sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
   const rows = built.filter(x => x.conx == null || x.conx < 180);                // 연결 시간이 180분 이상이면 표시하지 않습니다
   const hidden = built.length - rows.length;
+  const pax = rows.reduce((a, x) => a + x.pax, 0), bags = rows.reduce((a, x) => a + (x.bags || 0), 0);
+  const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
+  const asOf = state.meta && state.meta.generatedAt ? ` · Flight data as of ${esc(String(state.meta.generatedAt).slice(11, 16))} KST` : "";
+  const head = `<div class="fids-head"><h3>${esc(b.dl_flight)}<small>${out ? "DEPARTURE · ETD" : "ARRIVAL · ETA"} ${esc(b.time_hhmm)}</small></h3>
+      <div class="fids-meta">${rows.length} connecting flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}${hidden ? ` · ${hidden} hidden (CONX 180 min or more)` : ""}${asOf}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>`;
+  if (!out) {                                                                     // Inbound 보드: Departure flight / To / Gate / ETD / Total pax / Total bags / CONX Time
+    const body = rows.map(x => {
+      const cls = x.conx == null ? "" : x.conx < 45 ? "x-mis" : x.conx < 60 ? "x-chk" : "";   // 45분 미만 빨강, 45~60분 노랑
+      return `<tr${cls ? ` class="${cls}"` : ""}><td class="fl">${esc(x.label)}</td><td>${esc((x.leg && x.leg.apt) || x.frm)}</td>
+        <td>${x.leg ? esc(x.leg.gate || "—") : "N/A"}</td><td>${x.t == null ? "N/A" : fmt(x.t)}</td>
+        <td class="n">${x.pax}</td><td class="n">${x.bags == null ? "—" : x.bags}</td><td class="n cx">${x.conx == null ? "—" : x.conx + " min"}</td></tr>`;
+    }).join("");
+    return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">${head}
+    <div class="tablewrap"><table><thead><tr><th>Departure flight</th><th>To</th><th>Gate</th><th>ETD</th><th class="n">Total pax</th><th class="n">Total bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under 180 minutes.</td></tr>`}</tbody></table></div>
+  </div>`;
+  }
   const body = rows.map(x => {
     const st = x.conx == null ? null : (x.conx < 30 ? { cls: "mis" } : cxStatus(x.conx));
     const delayed = x.leg && eff(x.leg) !== x.leg.sched;
     return `<tr${st ? ` class="x-${st.cls}"` : ""}><td class="fl">${esc(x.label)}${x.cs.length ? `<small> ${esc(x.cs.join(" "))}</small>` : ""}${x.star ? `<small title="Marked ** in the report"> **</small>` : ""}</td>
       <td>${esc((x.leg && x.leg.apt) || x.frm)}</td>
       <td>${x.leg ? esc(x.leg.gate || "—") : `<small>N/A</small>`}</td>
-      <td>${x.t == null ? `<small>${x.isIn ? "arrived (time N/A)" : "N/A"}</small>` : fmt(x.t)}${x.src === "file" ? `<small> file</small>` : delayed ? `<small> ${out ? "STA" : "STD"} ${fmt(x.leg.sched)}</small>` : ""}${x.leg && x.leg.actual != null ? `<small> ${out ? "landed" : "departed"}</small>` : ""}</td>
+      <td>${x.t == null ? `<small>${x.isIn ? "arrived (time N/A)" : "N/A"}</small>` : fmt(x.t)}${x.src === "file" ? `<small> file</small>` : delayed ? `<small> STA ${fmt(x.leg.sched)}</small>` : ""}${x.leg && x.leg.actual != null ? `<small> landed</small>` : ""}</td>
       <td class="n">${x.pax}<small> C${x.c} F${x.f} W${x.w} Y${x.y}</small></td><td class="n">${x.bags == null ? "—" : x.bags}</td>
       <td class="n cx">${x.conx == null ? "—" : x.conx + " min"}</td></tr>`;
   }).join("");
-  const pax = rows.reduce((a, x) => a + x.pax, 0), bags = rows.reduce((a, x) => a + (x.bags || 0), 0);
-  const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
-  return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">
-    <div class="fids-head"><h3>${esc(b.dl_flight)}<small>${out ? "DEPARTURE · ETD" : "ARRIVAL · ETA"} ${esc(b.time_hhmm)}</small></h3>
-      <div class="fids-meta">${rows.length} connecting flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}${hidden ? ` · ${hidden} hidden (CONX 180 min or more)` : ""}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>
-    <div class="tablewrap"><table><thead><tr><th>${out ? "Arriving flight" : "Departing flight"}</th><th>${out ? "From" : "To"}</th><th>Gate</th><th>${out ? "ETA" : "ETD"}</th><th class="n">Total pax</th><th class="n">Bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under 180 minutes.</td></tr>`}</tbody></table></div>
+  return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">${head}
+    <div class="tablewrap"><table><thead><tr><th>Arriving flight</th><th>From</th><th>Gate</th><th>ETA</th><th class="n">Total pax</th><th class="n">Bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under 180 minutes.</td></tr>`}</tbody></table></div>
   </div>`;
 }
 function cbRender() {
@@ -2207,12 +2263,13 @@ function cbRender() {
 
 document.querySelectorAll('input[name="cbDir"]').forEach(r => r.addEventListener("change", cbDirUi));
 $("#cbForm").addEventListener("submit", e => { e.preventDefault(); cbSave(); });
+$("#cbFlight").addEventListener("input", () => { if (cb.parsed) cbPreview(); });
 $("#cbFile").addEventListener("change", async e => {
   const f = e.target.files && e.target.files[0];
   cbReset();
   if (!f) return;
   if (f.size > 1000000) { $("#cbErr").textContent = "The file is too large (maximum 1 MB)."; return; }
-  try { cb.parsed = cbParseReport(await f.text()); } catch (x) { cb.parsed = null; $("#cbErr").textContent = "The file could not be read."; }
+  try { cb.parsed = cbParseAny(await f.text()); } catch (x) { cb.parsed = null; $("#cbErr").textContent = "The file could not be read."; }
   cbPreview();
 });
 $("#cbRefresh").addEventListener("click", cbRefresh);
