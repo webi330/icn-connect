@@ -390,6 +390,8 @@ body.view-conn, body.view-login { padding-right: 0 !important; }
 body.ver2 .v2bar { display: flex; }
 .v2bar .cp-user { padding-bottom: 0; }
 .cxb { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; background: #fff; color: #12294a; font-size: 10.5px; font-weight: 700; line-height: 15px; white-space: nowrap; border: 1px solid rgba(0, 0, 0, 0.25); }
+.cxb.dl { background: #003366; color: #fff; border-color: #003366; }
+.cxb.own { background: #ffc61a; color: #1b2430; border-color: #b8860b; }
 .tip .t-cx { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; }
 .tip .t-cx b { font-size: 13px; }
 
@@ -444,6 +446,7 @@ body.ver2 .v2bar { display: flex; }
 @media (max-width: 640px) { .fids td { font-size: 15px; padding: 8px 10px; } .fids th { padding: 6px 10px; } .fids-head h3 { font-size: 20px; } }
 
 /* Connection Planner: 왼쪽 메뉴 (Inbound / Outbound) */
+.cp-beta { margin: 24px 0 0; padding: 12px 16px; font-size: 13px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 4px; }
 .cp-layout { display: flex; gap: 24px; align-items: flex-start; }
 .cp-side { flex: none; width: 190px; margin-top: -52px; position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.16); padding: 6px 0; }
 .cp-side a { display: block; padding: 12px 18px; color: var(--muted); text-decoration: none; font-weight: 700; border-left: 4px solid transparent; }
@@ -737,6 +740,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
     </section>
     </div>
     </div>
+    <p class="cp-beta" role="note">Please be advised that the Beta version displays information for Terminal 2 (T2) flights only.</p>
   </div>
 </main>
 </div>
@@ -1089,6 +1093,7 @@ function dayLabelAt(m) {
 }
 
 function renderChart() {
+  state.cbMap = (typeof v2On === "function" && v2On()) ? cbLegMap() : null;          // ver2: 전광판에 표시된 연결편 -> DL 환승객·가방 수
   const u = state.u, W = state.win, cols = (W.end - W.start) / STEP;
   const mod = (a, n) => ((a % n) + n) % n;
   gantt.style.setProperty("--u", u + "px");
@@ -1160,7 +1165,9 @@ function barHtml(it) {
   const label = `${it.reg} ${it.type}, 게이트 ${it.gate || "미배정"}, ${fmt(it._s)}부터 ${fmt(it._e)}까지`;
   const top = un ? `;top:${2 + it.ulane * 30}px` : "";
   const cxs = v2On() ? v2Conn(it) : null;
-  const badge = cxs ? `<span class="cxb" title="Connecting passengers and bags from ${esc(cxs.rec.arrival_flight)}">Pax ${cxs.pax} · Bags ${cxs.bags}</span>` : "";
+  const anns = v2On() ? v2Ann(it) : [];
+  const badge = (cxs ? `<span class="cxb" title="Connecting passengers and bags from ${esc(cxs.rec.arrival_flight)}">Pax ${cxs.pax} · Bags ${cxs.bags}</span>` : "") +
+    anns.slice(0, 2).map(a => `<span class="cxb ${a.total ? "own" : "dl"}" title="${esc(v2AnnText(a))}">${esc(a.dl)} ${a.total ? "Σ " : ""}Pax ${a.pax}${a.bags != null ? ` · Bags ${a.bags}` : ""}</span>`).join("");
   return `<button class="${cls}" style="left:${left}px;width:${width}px${top}" data-i="${it._i}" data-hay="${esc(hay)}" aria-label="${esc(label)}">
     <div class="b1"><b>${esc(it.reg)}</b><span>${esc(it.type)}</span>${badge}</div>
     <div class="b2">${flights}<span class="rt">${route}</span></div>
@@ -1184,6 +1191,7 @@ function legRow(label, leg) {
     ${leg.actual != null ? `<td>${fmt(leg.actual)}${d(leg.actual)}</td>` : `<td class="none">미반영</td>`}</tr>`;
 }
 function tipHtml(it) {
+  const tl = p => it.arr && it.dep ? `${p}A / ${p}D` : `${p}${it.arr ? "A" : "D"}`;       // STA/STD, ETA/ETD, ATA/ATD (도착만, 출발만, 둘 다에 맞춰 표시)
   const st = { done: "출발 완료", active: "점유 중", plan: "예정" }[it.st];
   const kindNote = it.arr && it.dep ? ""
     : it.towed ? (it.arr
@@ -1194,12 +1202,12 @@ function tipHtml(it) {
     : `같은 등록기호의 도착편이 이 게이트에 없어 출발 시각 ${RULES.depHold}분 전부터로 표시합니다.`;
   return `<div class="t-head"><b>${esc(it.reg)}</b><span>${esc(it.type)}<span class="chip ${it.st}">${st}</span></span></div>
     <div class="t-meta">게이트 ${it.gate || "미배정"} 점유 ${fmt(it._s)} ~ ${fmt(it._e)} (${it._e - it._s}분)</div>
-    <table><thead><tr><th></th><th>예정</th><th>변경</th><th>실제</th></tr></thead><tbody>${it.arr ? legRow("도착", it.arr) : ""}${it.dep ? legRow("출발", it.dep) : ""}</tbody></table>
+    <table><thead><tr><th></th><th>${tl("ST")}</th><th>${tl("ET")}</th><th>${tl("AT")}</th></tr></thead><tbody>${it.arr ? legRow("도착", it.arr) : ""}${it.dep ? legRow("출발", it.dep) : ""}</tbody></table>
     ${kindNote ? `<div class="t-foot" style="border-top:0;margin-top:4px;padding-top:0">${kindNote}</div>` : ""}
     ${!it.gate ? `<div class="t-foot" style="border-top:0;margin-top:4px;padding-top:0">게이트가 아직 배정되지 않은 항공편입니다.</div>` : ""}
     ${it.conflict ? `<div class="t-warn">같은 게이트의 앞뒤 항공기와 점유 시간이 겹칩니다.</div>` : ""}
     ${v2Tip(it)}
-    <div class="t-foot">막대 구간은 실제 시각이 있으면 실제, 없으면 변경, 변경도 없으면 예정 시각 기준입니다.</div>`;
+    <div class="t-foot">ETA is based on EBIT in IIS. ATA/ATD are based on ABIT/ABOT in IIS.</div>`;
 }
 let tipOn = false;
 function placeTip(x, y) {
@@ -2194,6 +2202,7 @@ function cbRender() {
   const inb = cb.records.filter(b => b.direction === "IN"), out = cb.records.filter(b => b.direction === "OUT");
   $("#cbBoardsIn").innerHTML = inb.map(b => cbBoardHtml(b, midnight)).join("");
   $("#cbBoardsOut").innerHTML = out.length ? out.map(b => cbBoardHtml(b, midnight)).join("") : `<div class="cp-empty">No outbound boards yet. Use Data upload, choose Outbound, enter the DL departure flight and ETD, and attach the .txt report.</div>`;
+  if (typeof v2Rerender === "function") v2Rerender();                                   // Gate Planner ver2 막대의 숫자도 같이 갱신
 }
 
 document.querySelectorAll('input[name="cbDir"]').forEach(r => r.addEventListener("change", cbDirUi));
@@ -2243,10 +2252,36 @@ function v2Conn(it) {
 }
 function v2Tip(it) {
   if (!v2On()) return "";
-  const c = v2Conn(it); if (!c) return "";
+  const an = v2Ann(it).map(a => `<div class="t-cx"><b>${esc(v2AnnText(a))}</b></div>`).join("");
+  const c = v2Conn(it); if (!c) return an;
   const list = (c.rec.rows || []).slice().sort((a, b) => b.pax - a.pax).slice(0, 8)
     .map(r => `${esc(r.flight)} ${esc(r.dest || "—")}${r.std ? " " + esc(r.std) : ""}: ${r.pax} pax / ${r.bags} bags`).join("<br>");
-  return `<div class="t-cx"><b>Connections from ${esc(c.rec.arrival_flight)}</b> (ETA ${esc(c.rec.eta_time)})<br>${c.n} flights, ${c.pax} pax, ${c.bags} bags<br>${list}${c.n > 8 ? `<br>+${c.n - 8} more` : ""}</div>`;
+  return `<div class="t-cx"><b>Connections from ${esc(c.rec.arrival_flight)}</b> (ETA ${esc(c.rec.eta_time)})<br>${c.n} flights, ${c.pax} pax, ${c.bags} bags<br>${list}${c.n > 8 ? `<br>+${c.n - 8} more` : ""}</div>` + an;
+}
+/* 전광판(Data upload 로 올린 보드)에 표시된 연결편의 막대에 DL 환승객·가방 수를 붙입니다.
+   - Outbound 보드(DL 출발편): 연결 도착편의 막대에만 표시 (DL 출발편 막대에는 표시하지 않음)
+   - Inbound 보드(DL 도착편): 연결 출발편의 막대에만 표시 (DL 도착편 막대에는 표시하지 않음)
+   보드와 같은 규칙(연결 시간 180분 이상은 제외)으로 계산합니다. */
+function cbLegMap() {
+  const m = new Map(), midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const add = (leg, a) => { if (!m.has(leg)) m.set(leg, []); m.get(leg).push(a); };
+  for (const b of cb.records) {
+    const ref = Math.round((new Date(b.time_at).getTime() - midnight.getTime()) / 60000);
+    const rows = cbBuild(b.data || {}, ref, b.direction).filter(x => x.conx == null || x.conx < 180);
+    for (const x of rows) {
+      if (x.leg) add(x.leg, { dl: b.dl_flight, dir: b.direction, pax: x.pax, bags: x.bags, conx: x.conx, total: false });
+    }
+  }
+  return m;
+}
+function v2Ann(it) {
+  const m = state.cbMap; if (!m || !m.size) return [];
+  return [it.arr, it.dep].filter(Boolean).flatMap(l => m.get(l) || []);
+}
+function v2AnnText(a) {
+  const bg = a.bags != null ? `, ${a.bags} bags` : "";
+  if (a.total) return `${a.dl}: ${a.n} connecting flights, ${a.pax} pax${bg} in total`;
+  return `Connecting ${a.dir === "OUT" ? "to" : "from"} ${a.dl}: ${a.pax} pax${bg}${a.conx != null ? `, CONX ${a.conx} min` : ""}`;
 }
 function v2Rerender(force) {
   if ((!force && !v2On()) || !state.items || !state.items.length || $("#viewGate").hidden) return;
