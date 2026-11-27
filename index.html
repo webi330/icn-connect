@@ -2226,7 +2226,7 @@ async function cbDiscard(e) {
 $("#cbBoardsIn").addEventListener("click", cbDiscard);
 $("#cbBoardsOut").addEventListener("click", cbDiscard);
 setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cbRefresh(); }, 30000);
-cbDirUi(); cbRender();
+cbDirUi();
 
 /* ---- Gate Planner ver2: 로그인한 사용자에게만 보이는 Gate Planner + 환승 현황 배지 ----
    화면은 기존 Gate Planner 와 같고, 로그인 세션(SB)은 Connection Planner 와 공유합니다.
@@ -2325,6 +2325,7 @@ function showView(name) {
   }
 }
 window.addEventListener("hashchange", () => showView(currentView()));
+cbRender();
 showView(currentView());
 
 load(true);
