@@ -410,6 +410,46 @@ body.ver2 .v2bar { display: flex; }
 .cp-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--red); font-weight: 700; }
 .cp-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding-bottom: 6px; }
 .btn.small { height: 34px; padding: 0 14px; font-size: 13px; }
+/* Data upload: 입력 폼과 FIDS 전광판 */
+.cx-form input[type="radio"] { width: auto; height: auto; margin-right: 6px; }
+.cb-dir { display: flex; gap: 24px; padding-top: 8px; }
+.cb-dir label { display: flex; align-items: center; margin: 4px 0; font-size: 15px; color: var(--ink); cursor: pointer; }
+.cb-review { margin-top: 10px; }
+.cb-review table { width: 100%; border-collapse: collapse; }
+.cb-review th { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 6px; }
+.cb-review td { padding: 3px 4px; }
+.cx-form .cb-review input { height: 34px; padding: 0 8px; font-size: 14px; }
+.cb-review .cb-x { height: 34px; padding: 0 10px; }
+.cb-boards { padding: 16px 24px 24px; display: grid; gap: 20px; }
+.fids { background: #0a1220; color: #ffc61a; border-radius: 6px; border: 1px solid #24344d; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.25); overflow: hidden; font-family: "Lato", "Noto Sans KR", monospace; }
+.fids-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; padding: 14px 20px; background: #101c33; border-bottom: 2px solid #ffc61a; }
+.fids-head h3 { margin: 0; font-size: 26px; letter-spacing: 0.08em; color: #fff; }
+.fids-head h3 small { font-size: 15px; color: #ffc61a; letter-spacing: 0.04em; margin-left: 10px; }
+.fids-meta { font-size: 12.5px; color: #9fb3d1; }
+.fids-meta button { margin-left: 10px; background: transparent; color: #9fb3d1; border: 1px solid #3b5272; border-radius: 3px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+.fids table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.fids th { text-align: left; padding: 8px 20px; font-size: 12px; letter-spacing: 0.12em; color: #7f93b3; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #24344d; }
+.fids td { padding: 10px 20px; font-size: 20px; font-weight: 700; letter-spacing: 0.04em; border-bottom: 1px solid #16233a; white-space: nowrap; }
+.fids tr:last-child td { border-bottom: 0; }
+.fids td.fl { color: #fff; }
+.fids td.n { text-align: right; }
+.fids th.n { text-align: right; }
+.fids tr.x-mis td.cx { color: #fff; background: #c01933; }
+.fids tr.x-chk td.cx { color: #3d2f00; background: #ffd84d; }
+.fids tr.x-cover td.cx { color: #0a1220; background: #8fd3ff; }
+.fids-empty { padding: 24px 20px; color: #9fb3d1; }
+@media (max-width: 640px) { .fids td { font-size: 15px; padding: 8px 10px; } .fids th { padding: 6px 10px; } .fids-head h3 { font-size: 20px; } }
+
+/* Connection Planner: 왼쪽 메뉴 (Inbound / Outbound) */
+.cp-layout { display: flex; gap: 24px; align-items: flex-start; }
+.cp-side { flex: none; width: 190px; margin-top: -52px; position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.16); padding: 6px 0; }
+.cp-side a { display: block; padding: 12px 18px; color: var(--muted); text-decoration: none; font-weight: 700; border-left: 4px solid transparent; }
+.cp-side a:hover { color: var(--navy); background: var(--row-hover); }
+.cp-side a[aria-current="page"] { color: var(--navy); border-left-color: var(--red); background: var(--row-hover); }
+.cp-content { flex: 1 1 auto; min-width: 0; }
+.cp-content > .panel { margin-top: -52px; }
+.cp-content > .cp-card { margin-top: -52px; }
+@media (max-width: 760px) { .cp-layout { flex-direction: column; gap: 0; } .cp-side { width: 100%; display: flex; margin-top: -40px; } .cp-side a { flex: 1; text-align: center; border-left: 0; border-bottom: 3px solid transparent; } .cp-side a[aria-current="page"] { border-bottom-color: var(--red); } .cp-content { width: 100%; } .cp-content > .panel, .cp-content > .cp-card { margin-top: 16px; } }
 .cp-note { padding: 10px 24px; font-size: 13px; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--line); }
 .cp-form { padding: 4px 24px 20px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0 16px; }
 .cp-form .full { grid-column: 1 / -1; }
@@ -602,6 +642,13 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
 </section>
 <main>
   <div class="wrap">
+    <div class="cp-layout">
+    <aside class="cp-side" aria-label="Connection Planner menu">
+      <a href="#connection" id="cpMenuIn" data-sub="in" aria-current="page">Inbound</a>
+      <a href="#connection/outbound" id="cpMenuOut" data-sub="out">Outbound</a>
+      <a href="#connection/upload" id="cpMenuUp" data-sub="up">Data upload</a>
+    </aside>
+    <div class="cp-content">
     <section class="panel cp-card" id="cpLogin">
       <form id="cpLoginForm" autocomplete="on">
         <h2>Sign in</h2>
@@ -647,6 +694,48 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
       </form>
       <div id="cxResults"></div>
     </section>
+
+    <section class="panel cp-app" id="cpOut" hidden>
+      <div class="cp-bar"><h2 class="cx-title">Outbound</h2></div>
+      <div class="cp-note">Outbound connection details will be available here.</div>
+      <div class="cp-empty" style="padding:40px 24px">Coming soon.</div>
+    </section>
+
+    <section class="panel cp-app" id="cpUp" hidden>
+      <div class="cp-bar">
+        <h2 class="cx-title">Data upload</h2>
+        <div class="cp-user"><span id="cbUser"></span><button type="button" class="btn ghost small" id="cbRefresh">Refresh</button></div>
+      </div>
+      <div class="cp-note">Upload a screenshot of the DL connection list. Only the recognized text is saved, not the image, and it is discarded automatically 24 hours after it is saved. Please check the recognized rows before saving.</div>
+      <form class="cx-form" id="cbForm" autocomplete="off">
+        <div class="cx-wide cb-dir" role="radiogroup" aria-label="Direction">
+          <label><input type="radio" name="cbDir" value="OUT" checked> Outbound</label>
+          <label><input type="radio" name="cbDir" value="IN"> Inbound</label>
+        </div>
+        <div>
+          <label for="cbFlight">DL flight</label>
+          <div class="cx-flight"><span class="cx-prefix">DL</span><input id="cbFlight" maxlength="5" placeholder="188" required></div>
+        </div>
+        <div>
+          <label for="cbTime" id="cbTimeLbl">ETD (HH:MM)</label>
+          <input id="cbTime" maxlength="5" placeholder="14:35" inputmode="numeric" required>
+        </div>
+        <div>
+          <label for="cbFile">Connection screenshot (image, or paste with Ctrl+V)</label>
+          <input type="file" id="cbFile" accept="image/png,image/jpeg,image/webp">
+        </div>
+        <div class="cx-wide cx-preview" id="cbStatus" aria-live="polite"></div>
+        <div class="cx-wide cb-review" id="cbReview"></div>
+        <div class="cx-wide cp-err" id="cbErr" role="alert"></div>
+        <div class="cx-wide cx-actions">
+          <button class="btn" type="submit" id="cbRead">Read image</button>
+          <button class="btn" type="button" id="cbSave" hidden>Save and show board</button>
+        </div>
+      </form>
+      <div class="cb-boards" id="cbBoards"></div>
+    </section>
+    </div>
+    </div>
   </div>
 </main>
 </div>
@@ -1639,10 +1728,14 @@ const cx = { parsed: null, showAll: false };
 const cpWhen = iso => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 /* ---- 로그인 화면 ---- */
+const cpSub = () => { const h = typeof location !== "undefined" ? location.hash : ""; return h === "#connection/outbound" ? "out" : h === "#connection/upload" ? "up" : "in"; };
 function cpAuthUi() {
-  const problem = SB.problem(), signed = !!SB.session && !problem;
+  const problem = SB.problem(), signed = !!SB.session && !problem, sub = cpSub();
   $("#cpLogin").hidden = signed;
-  $("#cpApp").hidden = !signed;
+  $("#cpApp").hidden = !signed || sub !== "in";
+  $("#cpOut").hidden = !signed || sub !== "out";
+  $("#cpUp").hidden = !signed || sub !== "up";
+  [["in", "#cpMenuIn"], ["out", "#cpMenuOut"], ["up", "#cpMenuUp"]].forEach(([k, id]) => $(id).setAttribute("aria-current", sub === k ? "page" : "false"));
   $("#cpLoginBtn").disabled = !!problem;
   if (!signed && problem) $("#cpLoginErr").textContent = problem;
   if (signed) $("#cpUser").textContent = SB.session.email;
@@ -1658,7 +1751,7 @@ async function cpRefresh() {
   try { cp.records = (await SB.rest("arrival_connections?select=*&order=created_at.desc")) || []; cxRender(); v2Rerender(); }
   catch (e) { cpHandleError(e); }
 }
-function cpEnter() { SB.load(); cpAuthUi(); if (SB.session && !SB.problem()) cpRefresh(); }
+function cpEnter() { SB.load(); cpAuthUi(); if (SB.session && !SB.problem()) { cpRefresh(); cbRefresh(); } }
 async function cpDoLogin(email, pw) {
   const err = $("#cpLoginErr"); err.textContent = ""; $("#cpLoginBtn").disabled = true;
   try { await SB.signIn(email, pw); $("#cpPassword").value = ""; cpAuthUi(); await cpRefresh(); }
@@ -1880,7 +1973,7 @@ $("#cxFile").addEventListener("change", async e => {
   cxPreview();
 });
 $("#cpRefresh").addEventListener("click", cpRefresh);
-$("#cpSignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; cxResetForm(); cxRender(); cpAuthUi(); });
+$("#cpSignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; cb.records = []; cxResetForm(); cxRender(); cbReset(); cbRender(); cpAuthUi(); });
 $("#cxResults").addEventListener("change", e => { if (e.target && e.target.id === "cxAll") { cx.showAll = !!e.target.checked; cxRender(); } });
 $("#cxResults").addEventListener("click", async e => {
   const b = e.target.closest("button[data-rid]"); if (!b) return;
@@ -1911,6 +2004,174 @@ if (window.__icnMock) {
   });
 }
 setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cpRefresh(); }, 30000);
+
+/* ====================================================================
+   Data upload: 스크린샷 -> 글자 인식(OCR) -> 확인·수정 -> 저장(Supabase connection_boards) -> FIDS 전광판
+   - 이미지는 이 브라우저 안에서만 읽고(Tesseract.js) 서버로 보내지 않습니다. 저장되는 것은 확인한 글자 값뿐입니다.
+   - 글자 인식 결과는 신뢰할 수 없는 입력으로 보고, 형식을 검사한 뒤 저장하고, 화면에 낼 때는 항상 esc() 를 거칩니다.
+==================================================================== */
+const cb = { records: [], rows: null, busy: false };
+const CB_FLIGHT = /^[A-Z0-9]{2}\d{1,4}[A-Z]?$/;
+function cbDir() { const r = document.querySelector('input[name="cbDir"]:checked'); return r ? r.value : "OUT"; }
+function cbDirUi() { $("#cbTimeLbl").textContent = cbDir() === "IN" ? "ETA (HH:MM)" : "ETD (HH:MM)"; }
+function cbReset() { cb.rows = null; $("#cbReview").innerHTML = ""; $("#cbStatus").innerHTML = ""; $("#cbSave").hidden = true; $("#cbErr").textContent = ""; }
+
+/* 글자 인식 결과 -> 행. 열 순서는 Flight, Origin, Gate, Pax, CONX 라고 보고 읽습니다. 틀린 값은 아래 확인 표에서 고칩니다. */
+function cbParse(text) {
+  const rows = [];
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.replace(/[|_\[\]{}<>]/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
+    if (line.length < 6) continue;
+    const fm = line.match(/(^|[^A-Z0-9])([A-Z]{2})\s?0*(\d{1,4})([A-Z])?(?![A-Z0-9])/);
+    if (!fm) continue;
+    const flight = fm[2] + fm[3] + (fm[4] || "");
+    let rest = line.slice(fm.index + fm[0].length).trim();
+    /* CONX: "45", "45 MIN", "0:45", "1:05" 중 줄의 맨 끝쪽 값 */
+    let conx = null;
+    const hm = rest.match(/(\d{1,2}):([0-5]\d)\s*$/);
+    const mm = rest.match(/(\d{1,3})\s*(?:MIN|MINS|M|')?\s*$/);
+    if (hm) { conx = +hm[1] * 60 + +hm[2]; rest = rest.slice(0, hm.index).trim(); }
+    else if (mm) { conx = +mm[1]; rest = rest.slice(0, mm.index).trim(); }
+    const toks = rest.split(" ").filter(Boolean);
+    const origin = [];
+    while (toks.length && /^[A-Z]{2,}$/.test(toks[0]) && !/^(GATE|GT)$/.test(toks[0])) origin.push(toks.shift());
+    if (toks.length && /^(GATE|GT)$/.test(toks[0])) toks.shift();
+    const gate = toks.length > 1 ? toks.shift() : (toks.length === 1 && !/^\d+$/.test(toks[0]) ? toks.shift() : "");
+    const pn = toks.length ? toks.shift().replace(/\D/g, "") : "";
+    rows.push({ flight, origin: origin.join(" ").slice(0, 40), gate: gate.slice(0, 6), pax: pn === "" ? "" : Math.min(+pn, 999), conx: conx == null ? "" : Math.min(conx, 9999) });
+    if (rows.length >= 300) break;
+  }
+  return rows;
+}
+function cbLoadOcr() {
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js";
+    sc.onload = () => res(); sc.onerror = () => rej(new Error("The text recognition library could not be loaded. Check the network and try again."));
+    document.head.appendChild(sc);
+  });
+}
+async function cbToCanvas(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("The image could not be opened.")); i.src = url; });
+    const k = Math.min(3, Math.max(1, 2200 / img.width));                                       // 작은 스크린샷은 키워서 읽습니다
+    const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  } finally { URL.revokeObjectURL(url); }
+}
+async function cbRead(file) {
+  const st = $("#cbStatus"), err = $("#cbErr"); err.textContent = "";
+  if (!file) { err.textContent = "Attach a screenshot first."; return; }
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { err.textContent = "Please use a PNG, JPG or WebP image."; return; }
+  if (file.size > 8000000) { err.textContent = "The image is too large (maximum 8 MB)."; return; }
+  cb.busy = true; $("#cbRead").disabled = true; $("#cbSave").hidden = true; $("#cbReview").innerHTML = "";
+  try {
+    st.textContent = "Loading the text recognition engine...";
+    await cbLoadOcr();
+    const canvas = await cbToCanvas(file);
+    st.textContent = "Reading the image... (the first run takes longer)";
+    const worker = await Tesseract.createWorker("eng");
+    try {
+      await worker.setParameters({ tessedit_pageseg_mode: "6", preserve_interword_spaces: "1" });
+      const { data } = await worker.recognize(canvas);
+      cb.rows = cbParse(data.text || "");
+    } finally { await worker.terminate(); }
+    st.innerHTML = cb.rows.length ? `Recognized <b>${cb.rows.length}</b> flights. Please check and correct the values, then save.` : "<b>No flights were recognized.</b> Try a larger or sharper screenshot.";
+    cbReview();
+  } catch (e) { st.textContent = ""; err.textContent = e.message || "Recognition failed."; }
+  cb.busy = false; $("#cbRead").disabled = false;
+}
+function cbReview() {
+  const box = $("#cbReview"), rows = cb.rows || [];
+  $("#cbSave").hidden = !rows.length;
+  if (!rows.length) { box.innerHTML = ""; return; }
+  const inp = (i, k, v, w) => `<input data-i="${i}" data-k="${k}" value="${esc(v)}" style="width:${w}" aria-label="${k} ${i + 1}">`;
+  box.innerHTML = `<table><thead><tr><th>Flight</th><th>Origin city</th><th>Gate</th><th>Total pax</th><th>CONX (min)</th><th></th></tr></thead><tbody>` +
+    rows.map((r, i) => `<tr><td>${inp(i, "flight", r.flight, "92px")}</td><td>${inp(i, "origin", r.origin, "100%")}</td><td>${inp(i, "gate", r.gate, "70px")}</td><td>${inp(i, "pax", r.pax, "80px")}</td><td>${inp(i, "conx", r.conx, "80px")}</td><td><button type="button" class="btn ghost cb-x" data-del="${i}" aria-label="Remove row ${i + 1}">&times;</button></td></tr>`).join("") +
+    `</tbody></table>`;
+}
+function cbClean() {
+  const out = [];
+  for (const r of cb.rows || []) {
+    const flight = String(r.flight).toUpperCase().replace(/\s+/g, "");
+    if (!CB_FLIGHT.test(flight)) continue;
+    const n = (v, max) => { const t = String(v).trim(); if (t === "" || !/^\d+$/.test(t)) return null; return Math.min(+t, max); };
+    out.push({ flight, origin: String(r.origin).trim().slice(0, 40), gate: String(r.gate).trim().toUpperCase().slice(0, 6), pax: n(r.pax, 999), conx: n(r.conx, 9999) });
+  }
+  return out;
+}
+async function cbSave() {
+  const err = $("#cbErr"); err.textContent = "";
+  const num = $("#cbFlight").value.trim().toUpperCase().replace(/^DL/, "");
+  if (!/^[0-9]{1,4}[A-Z]?$/.test(num)) { err.textContent = "Enter the DL flight number, for example 188."; return; }
+  const t = normEta($("#cbTime").value);
+  if (!t) { err.textContent = `Enter the ${cbDir() === "IN" ? "ETA" : "ETD"} as HH:MM, for example 14:35.`; return; }
+  const rows = cbClean();
+  if (!rows.length) { err.textContent = "There is no valid flight row to save."; return; }
+  const flight = "DL" + num, dir = cbDir();
+  $("#cbSave").disabled = true;
+  try {
+    const saved = await SB.rest("connection_boards", { method: "POST", body: { direction: dir, dl_flight: flight, time_hhmm: t, time_at: resolveEta(t).toISOString(), rows }, prefer: "return=representation" });
+    const id = saved && saved[0] && saved[0].id;
+    if (id) await SB.rest(`connection_boards?dl_flight=eq.${encodeURIComponent(flight)}&direction=eq.${dir}&id=neq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=minimal" });   // 같은 편명·방향의 이전 입력은 지웁니다
+    $("#cbFile").value = ""; cbReset(); await cbRefresh();
+  } catch (e) { cbHandleError(e); }
+  $("#cbSave").disabled = false;
+}
+function cbHandleError(e) {
+  if (/session expired|not signed in/i.test(e.message)) { cb.records = []; cbRender(); cpAuthUi(); $("#cpLoginErr").textContent = "Your session has expired. Please sign in again."; }
+  else $("#cbErr").textContent = /connection_boards/.test(e.message) ? "The connection_boards table is not set up yet. Please run the SQL script in Supabase." : e.message;
+}
+async function cbRefresh() {
+  try { cb.records = (await SB.rest("connection_boards?select=*&order=created_at.desc")) || []; cbRender(); }
+  catch (e) { cbHandleError(e); }
+}
+/* FIDS 전광판: 보드 하나가 DL 편명 하나입니다. CONX 가 짧은 편이 위에 옵니다. */
+function cbRender() {
+  const box = $("#cbBoards");
+  if (SB.session) $("#cbUser").textContent = SB.session.email;
+  if (!cb.records.length) { box.innerHTML = `<div class="cp-empty">No connection boards yet. Fill in the form above and attach a screenshot.</div>`; return; }
+  box.innerHTML = cb.records.map(b => {
+    const rows = (b.rows || []).slice().sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
+    const body = rows.map(r => {
+      const st = r.conx == null ? null : cxStatus(r.conx);
+      return `<tr${st ? ` class="x-${st.cls}"` : ""}><td class="fl">${esc(r.flight)}</td><td>${esc(r.origin || "—")}</td><td>${esc(r.gate || "—")}</td><td class="n">${r.pax == null ? "—" : esc(r.pax)}</td><td class="n cx">${r.conx == null ? "—" : esc(r.conx) + " min"}</td></tr>`;
+    }).join("");
+    const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
+    return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">
+      <div class="fids-head"><h3>${esc(b.dl_flight)}<small>${b.direction === "IN" ? "INBOUND · ETA" : "OUTBOUND · ETD"} ${esc(b.time_hhmm)}</small></h3>
+        <div class="fids-meta">Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Flight</th><th>Origin city</th><th>Gate</th><th class="n">Total pax</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="5" class="fids-empty">No flights.</td></tr>`}</tbody></table></div>
+    </div>`;
+  }).join("");
+}
+
+document.querySelectorAll('input[name="cbDir"]').forEach(r => r.addEventListener("change", () => { cbDirUi(); }));
+$("#cbForm").addEventListener("submit", e => { e.preventDefault(); if (!cb.busy) cbRead($("#cbFile").files[0]); });
+$("#cbFile").addEventListener("change", () => { cbReset(); });
+$("#cbSave").addEventListener("click", cbSave);
+$("#cbRefresh").addEventListener("click", cbRefresh);
+$("#cbReview").addEventListener("input", e => { const t = e.target; if (t && t.dataset && t.dataset.k && cb.rows && cb.rows[+t.dataset.i]) cb.rows[+t.dataset.i][t.dataset.k] = t.value; });
+$("#cbReview").addEventListener("click", e => { const b = e.target.closest("button[data-del]"); if (!b || !cb.rows) return; cb.rows.splice(+b.dataset.del, 1); cbReview(); });
+$("#cbBoards").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-bid]"); if (!b) return;
+  if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Confirm discard"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "Discard now"; }, 4000); return; }
+  try { await SB.rest(`connection_boards?id=eq.${encodeURIComponent(b.dataset.bid)}`, { method: "DELETE", prefer: "return=minimal" }); await cbRefresh(); }
+  catch (err) { cbHandleError(err); }
+});
+document.addEventListener("paste", e => {                                        // 스크린샷을 Ctrl+V 로 바로 붙여 넣기 (Data upload 화면에서만)
+  if ($("#cpUp").hidden || $("#viewConn").hidden) return;
+  const it = [...(e.clipboardData && e.clipboardData.items || [])].find(x => x.kind === "file" && /^image\//.test(x.type));
+  if (!it) return;
+  const f = it.getAsFile(); if (!f) return;
+  const dt = new DataTransfer(); dt.items.add(f); $("#cbFile").files = dt.files; cbReset();
+  $("#cbStatus").textContent = "Image pasted. Press Read image.";
+});
+setInterval(() => { if (!$("#viewConn").hidden && cpSub() === "up" && SB.session && !SB.problem()) cbRefresh(); }, 30000);
+cbDirUi(); cbRender();
 
 /* ---- Gate Planner ver2: 로그인한 사용자에게만 보이는 Gate Planner + 환승 현황 배지 ----
    화면은 기존 Gate Planner 와 같고, 로그인 세션(SB)은 Connection Planner 와 공유합니다.
@@ -1957,7 +2218,7 @@ $("#v2Refresh").addEventListener("click", cpRefresh);
 $("#v2SignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; cxRender(); showView("gate2"); });
 setInterval(() => { if (v2On() && SB.session && !SB.problem()) cpRefresh(); }, 30000);
 
-function currentView() { const h = typeof location !== "undefined" ? location.hash : ""; return h === "#connection" ? "connection" : h === "#gate2" ? "gate2" : "gate"; }
+function currentView() { const h = typeof location !== "undefined" ? location.hash : ""; return /^#connection(\/(outbound|upload))?$/.test(h) ? "connection" : h === "#gate2" ? "gate2" : "gate"; }
 function showView(name) {
   const conn = name === "connection", g2 = name === "gate2";
   if (g2 && !SB.session) SB.load();
