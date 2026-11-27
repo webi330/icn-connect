@@ -14,6 +14,10 @@ Terminal 2 의 도착/출발 항공편을 정리하고, 화면(index.html)이 �
 
 필요 환경: Python 3.8 이상 (추가 설치 없음)
 설정: 이 파일과 같은 폴더의 config.ini
+
+변경 이력
+  - 코드셰어 편명 보존: 같은 항공기의 코드셰어 편명(예: DL7937)을 각 항공편의 "cs" 목록에 담습니다.
+    화면의 Data upload(전광판)가 DL 숫자 편명으로 도착편을 찾을 때 사용합니다.
 """
 import argparse
 import configparser
@@ -238,9 +242,19 @@ def normalize(items, direction, cfg):
         is_master = (not master) or master == flight
         key = (direction, rec["reg"] or "%s|%s" % (gate, rec["apt"]), sched)   # 코드셰어 중복 제거
         prev = out.get(key)
-        if prev is None or (is_master and not prev[1]):
-            out[key] = (rec, is_master)
-    return [v[0] for v in out.values()]
+        if prev is None:
+            out[key] = [rec, is_master, {flight}]
+        else:
+            prev[2].add(flight)                                       # 합쳐지는 코드셰어 편명을 모아 둡니다
+            if is_master and not prev[1]:
+                out[key] = [rec, is_master, prev[2]]
+    result = []
+    for rec, _is_master, names in out.values():
+        cs = sorted(n for n in names if n and n != rec["flight"])
+        if cs:
+            rec["cs"] = cs[:8]                                        # 예: ["DL7937"]
+        result.append(rec)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +347,8 @@ def run_sync(cfg):
     save_state(state)
     no_reg = sum(1 for f in flights if not f["reg"])
     no_gate = sum(1 for f in flights if not f["gate"])
-    log("완료: T2 항공편 %d건 (등록기호 없음 %d건, 게이트 미배정 %d건), 오늘 호출 %d/%d회" % (len(flights), no_reg, no_gate, budget.calls, budget.limit))
+    with_cs = sum(1 for f in flights if f.get("cs"))
+    log("완료: T2 항공편 %d건 (등록기호 없음 %d건, 게이트 미배정 %d건, 코드셰어 편명 있음 %d건), 오늘 호출 %d/%d회" % (len(flights), no_reg, no_gate, with_cs, budget.calls, budget.limit))
     if flights and no_reg == len(flights):
         log("경고: 등록기호가 모두 비어 있습니다. --probe 로 필드 이름을 확인해 주세요.")
     if not flights:
@@ -368,6 +383,8 @@ def run_probe(cfg):
             print("  %-9s %3d건  예: %s" % (name, sum(1 for i in items if pick(i, name)), next((pick(i, name) for i in items if pick(i, name)), "-")))
         print("현황(remark) 값 분포:", dict(Counter(pick(i, "remark") for i in items)))
         print("기종 코드 분포:", dict(Counter(pick(i, "type") for i in items).most_common(30)))
+        dl = sorted(set(pick(i, "flight") for i in items if pick(i, "flight").upper().startswith("DL")))
+        print("DL 코드셰어 편명 (%d종): %s" % (len(dl), ", ".join(dl[:40])))
         gates = sorted(set(pick(i, "gate") for i in items if pick(i, "gate")))
         stands = sorted(set(pick(i, "stand") for i in items if pick(i, "stand")))
         print("게이트번호 값 (%d종): %s" % (len(gates), ", ".join(gates)))
