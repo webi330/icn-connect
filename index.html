@@ -675,38 +675,15 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
       <div class="cp-bar">
         <h2 class="cx-title">Inbound</h2>
         <div class="cp-user">
-          <span id="cpUser"></span>
+          <span id="cpUser"></span><span id="cbMailInMsg" role="status"></span>
+          <button type="button" class="btn small" id="cbMailIn">E-mail automation</button>
           <button type="button" class="btn ghost small" id="cpRefresh">Refresh</button>
           <button type="button" class="btn ghost small" id="cpSignOut">Sign out</button>
         </div>
       </div>
       <div class="cp-note">Connection boards for DL arrival flights uploaded in Data upload (Inbound). Details are discarded automatically 24 hours after they are saved.</div>
+      <div class="cb-mail" id="cbMailInPreview" hidden></div>
       <div class="cb-boards" id="cbBoardsIn"></div>
-      <details class="cp-legacy">
-      <summary>Arrival connection details (previous upload form)</summary>
-      <div class="cp-note">Details are discarded automatically 24 hours after they are updated. Only the recognized numbers are saved, not the attached file.</div>
-      <form class="cx-form" id="cxForm" autocomplete="off">
-        <div>
-          <label for="cxFlight">Arrival flight</label>
-          <div class="cx-flight"><span class="cx-prefix">DL</span><input id="cxFlight" maxlength="5" placeholder="1234" required></div>
-        </div>
-        <div>
-          <label for="cxEta">ETA (HH:MM)</label>
-          <input id="cxEta" maxlength="5" placeholder="14:35" inputmode="numeric" required>
-        </div>
-        <div>
-          <label for="cxFile">Arrival connection details (.txt)</label>
-          <input type="file" id="cxFile" accept=".txt,text/plain">
-        </div>
-        <div class="cx-wide cx-preview" id="cxPreview" aria-live="polite"></div>
-        <div class="cx-wide cp-err" id="cxErr" role="alert"></div>
-        <div class="cx-wide cx-actions">
-          <button class="btn" type="submit" id="cxSubmit">Update</button>
-          <button class="btn ghost" type="button" id="cxSample" hidden>Download sample file (preview only)</button>
-        </div>
-      </form>
-      <div id="cxResults"></div>
-      </details>
     </section>
 
     <section class="panel cp-app" id="cpOut" hidden>
@@ -1281,7 +1258,7 @@ async function load(first) {
     if (first) { if ($("#viewGate").hidden) state.pendingInit = true; else initialScroll(); }
     else { gantt.scrollLeft = Math.max(0, keepX - (shift / STEP) * state.u); gantt.scrollTop = keepY; }     // 표시 구간이 밀린 만큼 보정
     updateStamp();
-    if (!$("#viewConn").hidden && cp.records.length) cxRender();
+    
     if (!$("#viewConn").hidden && cb.records.length) cbRender();
   } catch (err) {
     gantt.innerHTML = `<div class="empty">게이트 데이터를 불러오지 못했습니다. ${esc(err.message || "")} 연결 상태를 확인한 뒤 다시 조회해 주세요.</div>`;
@@ -1743,7 +1720,6 @@ const SB = {
 };
 
 const cp = { records: [] };
-const cx = { parsed: null, showAll: false };
 const cpWhen = iso => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 /* ---- 로그인 화면 ---- */
@@ -1761,15 +1737,12 @@ function cpAuthUi() {
 }
 function cpHandleError(e) {
   if (/session expired|not signed in/i.test(e.message)) {
-    cp.records = []; cxRender(); cpAuthUi();
+    cp.records = []; cpAuthUi();
     $("#cpLoginErr").textContent = "Your session has expired. Please sign in again.";
     if (currentView() === "gate2") showView("gate2");
-  } else $("#cxErr").textContent = e.message;
+  }
 }
-async function cpRefresh() {
-  try { cp.records = (await SB.rest("arrival_connections?select=*&order=created_at.desc")) || []; cxRender(); v2Rerender(); }
-  catch (e) { cpHandleError(e); }
-}
+async function cpRefresh() { await cbRefresh(); v2Rerender(); }
 function cpEnter() { SB.load(); cpAuthUi(); if (SB.session && !SB.problem()) { cpRefresh(); cbRefresh(); } }
 async function cpDoLogin(email, pw) {
   const err = $("#cpLoginErr"); err.textContent = ""; $("#cpLoginBtn").disabled = true;
@@ -1778,90 +1751,6 @@ async function cpDoLogin(email, pw) {
   $("#cpLoginBtn").disabled = !!SB.problem();
 }
 
-/* ---- 환승 연결 정보 읽기 ----
-   파일에서 한 줄씩 보면서 다음 순서로 숫자를 찾습니다. (파일 자체는 저장하지 않고, 찾은 숫자만 저장합니다)
-   1) KE/OZ/LJ/MF/GA/CI 로 시작하는 편명  2) 그 뒤의 영문 3글자(도착지)  3) F, C, Y 인원수(합계가 승객수)  4) Bags 개수 */
-const CX_CARRIERS = ["KE", "OZ", "LJ", "MF", "GA", "CI"];
-const CX_NOT_DEST = new Set(["BAG", "PAX", "TTL", "TOT", "ETA", "ETD", "FLT", "DEP", "ARR"]);
-function parseConnections(text) {
-  const lines = String(text).split(/\r?\n/);
-  /* 머리글 줄(FLT GATE DPRT TO F C Y BAGS)이 있으면 TO 뒤의 열 순서를 그대로 따릅니다. 없으면 F, C, Y, BAGS 순서로 봅니다. */
-  let order = ["F", "C", "Y", "BAGS"];
-  for (const raw of lines) {
-    const L = raw.toUpperCase();
-    if (/\bTO\b/.test(L) && /\bF\b/.test(L) && /\bC\b/.test(L) && /\bY\b/.test(L) && /\bBAGS?\b/.test(L)) {
-      const o = (L.slice(L.search(/\bTO\b/) + 2).match(/\b(F|C|Y|BAGS?)\b/g) || []).map(t => t.startsWith("BAG") ? "BAGS" : t);
-      if (o.length === 4 && new Set(o).size === 4) order = o;
-      break;
-    }
-  }
-  /* 편명 뒤의 DPRT(출발 예정 시각), 도착지, F/C/Y, Bags 를 읽습니다. */
-  const columns = rest => {
-    let dest = "", afterDest = rest, std = "";
-    const dr = /(^|[^A-Z0-9])([A-Z]{3})(?![A-Z0-9])/g;
-    let m;
-    while ((m = dr.exec(rest))) {
-      if (CX_NOT_DEST.has(m[2])) continue;
-      dest = m[2]; afterDest = rest.slice(m.index + m[0].length);
-      const tm = [...rest.slice(0, m.index).matchAll(/(^|[^0-9:])([01]?\d|2[0-3])(?::?)([0-5]\d)(?![0-9])/g)].pop();   // 도착지 바로 앞의 시각이 DPRT
-      if (tm) std = `${pad(+tm[2])}:${tm[3]}`;
-      break;
-    }
-    let f = 0, c = 0, y = 0, bags = 0, gotCls = false, gotBags = false;
-    const lab = afterDest.match(/F\s*\/\s*C\s*\/\s*Y\s*[:=]?\s*(\d+)[\/\-,\s]+(\d+)[\/\-,\s]+(\d+)/);        // "F/C/Y 1/2/30"
-    const grab = k => { const r = afterDest.match(new RegExp(`(^|[^A-Z0-9])${k}\\s*[:=]?\\s*(\\d+)`)); if (r) { gotCls = true; return +r[2]; } return 0; };
-    const bm = afterDest.match(/BAGS?\s*[:=]?\s*(\d+)/) || afterDest.match(/(\d+)\s*BAGS?(?![A-Z])/);       // "BAGS 38", "38 BAGS"
-    if (lab) { gotCls = true; f = +lab[1]; c = +lab[2]; y = +lab[3]; }
-    else { f = grab("F"); c = grab("C"); y = grab("Y"); }                                                    // "F1 C2 Y30"
-    if (bm) { bags = +bm[1]; gotBags = true; }
-    if (!gotCls) { const t = afterDest.match(/(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)/); if (t) { gotCls = true; f = +t[1]; c = +t[2]; y = +t[3]; } }     // "1/2/30"
-    if (!gotCls && !gotBags) {                                         // 머리글처럼 숫자만 나열된 경우: 0 1 0 1  ->  F, C, Y, BAGS 순서
-      const nums = (afterDest.match(/\d+/g) || []).map(Number);
-      if (nums.length) {
-        const val = {}; order.forEach((k, i) => { if (i < nums.length) val[k] = nums[i]; });
-        f = val.F || 0; c = val.C || 0; y = val.Y || 0; bags = val.BAGS || 0;
-        gotCls = nums.length >= 3; gotBags = nums.length >= 4;
-      }
-    }
-    return { dest, std, f, c, y, bags, gotCls, gotBags };
-  };
-  const byKey = new Map(), numeric = [], warn = [];
-  let ignored = 0;
-  lines.forEach((raw, idx) => {
-    const L = raw.toUpperCase();
-    if (!L.trim()) return;
-    const fm = L.match(new RegExp(`(^|[^A-Z0-9])(${CX_CARRIERS.join("|")})\\s{0,2}0*(\\d{1,4})([A-Z])?(?![A-Z0-9])`));
-    if (!fm) {
-      /* 7924 처럼 글자 없이 숫자만 있는 편명은 DL 코드셰어 번호입니다. 도착지와 DPRT 가 같은 KE/OZ... 편에 합칩니다. */
-      const nm = L.match(/^\s*(?:DL\s*)?(\d{3,4})(?=\s)/);
-      if (nm) {
-        const r = columns(L.slice(nm[0].length));
-        if (r.dest && r.std && r.gotCls) { numeric.push({ no: nm[1], line: idx + 1, ...r }); return; }
-      }
-      ignored++; return;                                              // 그 밖의 줄(다른 항공사, 머리글 등)은 읽지 않음
-    }
-    const flight = fm[2] + fm[3] + (fm[4] || "");
-    const r = columns(L.slice(fm.index + fm[0].length));
-    if (!r.dest) warn.push(`Line ${idx + 1}: destination not found`);
-    if (!r.gotCls) warn.push(`Line ${idx + 1}: F/C/Y numbers not found`);
-    if (!r.gotBags) warn.push(`Line ${idx + 1}: Bags not found`);
-    const key = `${flight}|${r.std}`;
-    const cur = byKey.get(key) || { flight, dest: "", std: r.std, pax: 0, bags: 0, f: 0, c: 0, y: 0 };
-    cur.dest = cur.dest || r.dest; cur.pax += r.f + r.c + r.y; cur.bags += r.bags; cur.f += r.f; cur.c += r.c; cur.y += r.y;
-    byKey.set(key, cur);
-  });
-  const rows = [...byKey.values()], unmatched = [];
-  let merged = 0;
-  numeric.forEach(n => {
-    const cand = rows.filter(r => r.dest === n.dest && r.std && r.std === n.std);
-    if (cand.length === 1) {
-      const t = cand[0];
-      t.pax += n.f + n.c + n.y; t.bags += n.bags; t.f += n.f; t.c += n.c; t.y += n.y;
-      (t.via = t.via || []).push("DL" + n.no); merged++;
-    } else unmatched.push({ no: n.no, dest: n.dest, std: n.std, pax: n.f + n.c + n.y, bags: n.bags, why: cand.length ? "more than one flight with the same destination and time" : "no flight with the same destination and time" });
-  });
-  return { rows, warn, ignored, merged, unmatched };
-}
 function normEta(s) {
   const m = String(s).trim().match(/^(\d{1,2}):?(\d{2})$/);
   if (!m) return null;
@@ -1872,156 +1761,14 @@ function resolveEta(hhmm) {
   const [h, m] = hhmm.split(":").map(Number), now = new Date();
   return [-1, 0, 1].map(d => new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, h, m)).sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
 }
-const cxSameFlight = (apiFlight, f) => { const x = String(apiFlight).toUpperCase(); return x === f || (x.length === f.length + 1 && x.startsWith(f) && /[A-Z]/.test(x[x.length - 1])); };
-/* 환승편 ETD: Gate Planner 데이터의 출발 시각(실제, 변경, 예정 순)을 씁니다.
-   1) 파일의 DPRT(예정 시각)와 도착지가 같은 출발편  2) 편명이 같은 출발편  3) 둘 다 없으면 파일의 DPRT 를 그대로 사용 */
-function cxEtd(r, etaMin) {
-  const deps = state.flights.filter(l => l.dir === "DEP");
-  let std = null;
-  if (r.std) {
-    const [h, mi] = r.std.split(":").map(Number), base = Math.floor(etaMin / 1440) * 1440;
-    for (const k of [-1, 0, 1, 2]) { const t = base + k * 1440 + h * 60 + mi; if (t >= etaMin - 120) { std = t; break; } }   // ETA 보다 2시간 이전부터 가장 가까운 시각
-  }
-  if (std != null && r.dest) {
-    const c = deps.filter(l => l.apt === r.dest && Math.abs(l.sched - std) <= 30)
-      .sort((a, b) => (cxSameFlight(b.flight, r.flight) - cxSameFlight(a.flight, r.flight)) || Math.abs(a.sched - std) - Math.abs(b.sched - std));
-    if (c.length) return { t: eff(c[0]), leg: c[0], src: "gate" };
-  }
-  const same = deps.filter(l => cxSameFlight(l.flight, r.flight));
-  if (same.length) {
-    const pick = std != null ? same.filter(l => Math.abs(l.sched - std) <= 120).sort((a, b) => Math.abs(a.sched - std) - Math.abs(b.sched - std))[0]
-      : (same.map(l => ({ l, t: eff(l) })).sort((a, b) => a.t - b.t).find(x => x.t >= etaMin - 180) || {}).l;
-    if (pick) return { t: eff(pick), leg: pick, src: "gate" };
-  }
-  return std != null ? { t: std, leg: null, src: "file" } : null;
-}
 function cxStatus(mins) {
   if (mins < 30) return { label: "** MIS CONX **", cls: "mis" };
   if (mins < 45) return { label: "** NEED TO CHECK ETA CHANGE **", cls: "chk" };
   if (mins < 60) return { label: "**COVER SAME FLIGHT WITH M/A**", cls: "cover" };
   return null;
 }
-
-/* ---- 화면 그리기 ---- */
-function cxPreview() {
-  const el = $("#cxPreview"), p = cx.parsed;
-  if (!p) { el.innerHTML = ""; return; }
-  if (!p.rows.length) { el.innerHTML = `<b>No connecting flights were recognized.</b> Lines checked: ${p.ignored}. Please check the file.`; return; }
-  const pax = p.rows.reduce((s, r) => s + r.pax, 0), bags = p.rows.reduce((s, r) => s + r.bags, 0);
-  el.innerHTML = `Recognized <b>${p.rows.length}</b> connecting flights, <b>${pax}</b> pax, <b>${bags}</b> bags. Lines not read: ${p.ignored}.<br>` +
-    p.rows.map(r => `${esc(r.flight)} ${esc(r.dest || "—")}${r.std ? " " + esc(r.std) : ""} ${r.pax}/${r.bags}`).join(", ") +
-    (p.merged ? `<br>DL codeshare lines merged into the matching flight (same destination and time): <b>${p.merged}</b>.` : "") +
-    (p.unmatched.length ? `<br><b>Not counted</b> (no matching flight): ${p.unmatched.map(u => `DL${esc(u.no)} ${esc(u.dest)} ${esc(u.std)} (${u.pax} pax, ${u.bags} bags${u.why.startsWith("more") ? ", " + esc(u.why) : ""})`).join(", ")}.` : "") +
-    (p.warn.length ? `<br><b>Please check:</b> ${esc(p.warn.slice(0, 5).join("; "))}${p.warn.length > 5 ? ` (+${p.warn.length - 5} more)` : ""}` : "");
-}
-function cxEtdNote(x) {
-  if (!x.etd) return "";
-  if (x.etd.src === "file") return `<br><small>STD from file (not in Gate Planner)</small>`;
-  const l = x.etd.leg, notes = [];
-  if (eff(l) !== l.sched) notes.push(`STD ${fmt(l.sched)}`);
-  if (!cxSameFlight(l.flight, x.r.flight)) notes.push(`as ${esc(l.flight)}`);
-  return notes.length ? `<br><small>${notes.join(", ")}</small>` : "";
-}
-function cxRender() {
-  const box = $("#cxResults"), recs = cp.records;
-  if (!recs.length) { box.innerHTML = `<div class="cp-empty">No arrival flight details yet. Enter the flight and ETA, attach the .txt file and press Update.</div>`; return; }
-  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
-  let html = `<div class="cx-allbar"><label><input type="checkbox" id="cxAll"${cx.showAll ? " checked" : ""}> Also show flights with 60 minutes or more</label></div>`;
-  html += recs.map(rec => {
-    const etaMin = Math.round((new Date(rec.eta_at).getTime() - midnight.getTime()) / 60000);
-    const items = (rec.rows || []).map(r => {
-      const etd = cxEtd(r, etaMin), mins = etd ? etd.t - etaMin : null;
-      return { r, etd, mins, st: mins == null ? null : cxStatus(mins) };
-    }).sort((a, b) => (a.mins == null) - (b.mins == null) || a.mins - b.mins || a.r.flight.localeCompare(b.r.flight));
-    const shown = items.filter(x => cx.showAll || x.mins == null || x.st);
-    const cnt = k => items.filter(x => x.st && x.st.cls === k);
-    const tot = list => `${list.length} flights, ${list.reduce((s, x) => s + x.r.pax, 0)} pax, ${list.reduce((s, x) => s + x.r.bags, 0)} bags`;
-    const sum = [["mis", "MIS CONX"], ["chk", "NEED TO CHECK ETA CHANGE"], ["cover", "COVER SAME FLIGHT WITH M/A"]].filter(([k]) => cnt(k).length)
-      .map(([k, n]) => `<span class="cx-badge cx-${k}">${n}</span> ${tot(cnt(k))}`).join(" &nbsp; ");
-    const body = shown.length ? shown.map(x => `<tr class="${x.st ? "cx-row-" + x.st.cls : ""}">
-        <td><b>${esc(x.r.flight)}</b></td><td>${esc(x.r.dest || "—")}${x.r.std ? ` <small>${esc(x.r.std)}</small>` : ""}</td>
-        <td>${x.r.pax} <small>F${x.r.f}/C${x.r.c}/Y${x.r.y}</small>${x.r.via && x.r.via.length ? `<br><small>incl. ${esc(x.r.via.join(", "))}</small>` : ""}</td><td>${x.r.bags}</td>
-        <td>${x.etd ? fmt(x.etd.t) : "N/A"}${cxEtdNote(x)}</td><td>${x.mins == null ? "—" : x.mins + " min"}</td>
-        <td>${x.st ? `<span class="cx-badge cx-${x.st.cls}">${x.st.label}</span>` : x.mins == null ? `<span class="cx-badge cx-na">ETD not found in Gate Planner</span>` : ""}</td></tr>`).join("")
-      : `<tr><td colspan="7" class="cp-empty">No connecting flight is under 60 minutes.</td></tr>`;
-    const left = Math.max(0, Math.floor((new Date(rec.expires_at).getTime() - Date.now()) / 60000));
-    return `<div class="cx-rec">
-      <div class="cx-head"><h3>${esc(rec.arrival_flight)} &nbsp;ETA ${esc(rec.eta_time)}</h3>
-        <div class="cx-meta">Updated by ${esc(rec.created_by_email || "")} at ${cpWhen(rec.created_at)}, discarded at ${cpWhen(rec.expires_at)} (${Math.floor(left / 60)}h ${left % 60}m left)
-          <button type="button" class="btn ghost small" data-rid="${esc(rec.id)}">Discard now</button></div></div>
-      <div class="cx-sum">${sum || "No connecting flight is under 60 minutes."}</div>
-      <div class="tablewrap"><table class="plain cx-table"><thead><tr><th>Connecting flight</th><th>Dest / STD</th><th>Pax</th><th>Bags</th><th>ETD</th><th>Connection time</th><th>Status</th></tr></thead><tbody>${body}</tbody></table></div>
-    </div>`;
-  }).join("");
-  box.innerHTML = html;
-}
-
-/* ---- 저장과 삭제 ---- */
-function cxResetForm() {
-  ["#cxFlight", "#cxEta", "#cxFile"].forEach(s => { $(s).value = ""; });
-  cx.parsed = null; cxPreview(); $("#cxErr").textContent = "";
-}
-async function cxSave() {
-  const err = $("#cxErr"); err.textContent = "";
-  const num = $("#cxFlight").value.trim().toUpperCase().replace(/^DL/, "");
-  if (!/^[0-9A-Z]{1,5}$/.test(num)) { err.textContent = "Enter the arrival flight number, for example 1234."; return; }
-  const eta = normEta($("#cxEta").value);
-  if (!eta) { err.textContent = "Enter the ETA as HH:MM, for example 14:35."; return; }
-  if (!cx.parsed) { err.textContent = "Attach the arrival connection details (.txt) first."; return; }
-  if (!cx.parsed.rows.length) { err.textContent = "No connecting flights were recognized in the attached file."; return; }
-  if (cx.parsed.rows.length > 300) { err.textContent = "Too many connecting flights (maximum 300)."; return; }
-  const flight = "DL" + num;
-  $("#cxSubmit").disabled = true;
-  try {
-    const saved = await SB.rest("arrival_connections", { method: "POST", body: { arrival_flight: flight, eta_time: eta, eta_at: resolveEta(eta).toISOString(), rows: cx.parsed.rows }, prefer: "return=representation" });
-    const id = saved && saved[0] && saved[0].id;
-    if (id) await SB.rest(`arrival_connections?arrival_flight=eq.${encodeURIComponent(flight)}&id=neq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=minimal" });   // 같은 도착편의 이전 입력은 지웁니다
-    cxResetForm(); await cpRefresh();
-  } catch (e) { cpHandleError(e); }
-  $("#cxSubmit").disabled = false;
-}
-
 $("#cpLoginForm").addEventListener("submit", e => { e.preventDefault(); cpDoLogin($("#cpEmail").value.trim(), $("#cpPassword").value); });
-$("#cxForm").addEventListener("submit", e => { e.preventDefault(); cxSave(); });
-$("#cxFile").addEventListener("change", async e => {
-  const f = e.target.files && e.target.files[0];
-  $("#cxErr").textContent = "";
-  if (!f) { cx.parsed = null; cxPreview(); return; }
-  if (f.size > 2000000) { cx.parsed = null; cxPreview(); $("#cxErr").textContent = "The file is too large (maximum 2 MB)."; return; }
-  try { cx.parsed = parseConnections(await f.text()); } catch (err) { cx.parsed = null; $("#cxErr").textContent = "The file could not be read."; }
-  cxPreview();
-});
-$("#cpRefresh").addEventListener("click", cpRefresh);
-$("#cpSignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; cb.records = []; cxResetForm(); cxRender(); cbReset(); cbRender(); cpAuthUi(); });
-$("#cxResults").addEventListener("change", e => { if (e.target && e.target.id === "cxAll") { cx.showAll = !!e.target.checked; cxRender(); } });
-$("#cxResults").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-rid]"); if (!b) return;
-  if (b.dataset.armed !== "1") {                                            // 삭제는 두 번 눌러야 실행됩니다
-    b.dataset.armed = "1"; b.textContent = "Confirm discard";
-    setTimeout(() => { b.dataset.armed = ""; b.textContent = "Discard now"; }, 4000);
-    return;
-  }
-  try { await SB.rest(`arrival_connections?id=eq.${encodeURIComponent(b.dataset.rid)}`, { method: "DELETE", prefer: "return=minimal" }); await cpRefresh(); }
-  catch (err) { cpHandleError(err); }
-});
-/* 미리보기에서만: 시험용 샘플 파일 내려받기 */
-if (window.__icnMock) {
-  $("#cxSample").hidden = false;
-  $("#cxSample").addEventListener("click", () => {
-    const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
-    const deps = state.flights.filter(l => l.dir === "DEP" && /^(KE|OZ|LJ)/.test(l.flight) && eff(l) > nowMin + 20 && eff(l) < nowMin + 240).sort((a, b) => eff(a) - eff(b));
-    const seen = new Set(), pick = [];
-    for (const l of deps) { if (!seen.has(l.flight)) { seen.add(l.flight); pick.push(l); } if (pick.length === 6) break; }
-    const eta = pick.length ? eff(pick[0]) - 20 : nowMin + 60;
-    const lines = ["FLT GATE DPRT  TO            F    C    Y               BAGS", "  7924      1845 CNX            0    1    0                 1", ""];
-    const hhmm = t => `${pad(Math.floor(t / 60) % 24)}${pad(t % 60)}`;
-    pick.forEach((l, i) => lines.push(`${l.flight.slice(0, 2)}${l.flight.length < 6 ? " " : ""}${l.flight.slice(2)}`.padEnd(8) + `    ${hhmm(l.sched)} ${l.apt || "NRT"}`.padEnd(24) + `${i % 2}`.padStart(4) + `${2 + i}`.padStart(5) + `${10 + i * 7}`.padStart(5) + `${14 + i * 9}`.padStart(18)));
-    lines.unshift(`(demo sample, enter ETA ${pad(Math.floor(eta / 60) % 24)}:${pad(eta % 60)})`);
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/plain" }));
-    a.download = "sample-arrival-connections.txt"; a.click(); URL.revokeObjectURL(a.href);
-  });
-}
+$("#cpSignOut").addEventListener("click", async () => { await SB.signOut(); cb.records = []; cbReset(); cbRender(); cpAuthUi(); });
 setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cpRefresh(); }, 30000);
 
 /* ====================================================================
@@ -2397,6 +2144,63 @@ async function cbMail() {
 }
 $("#cbMail").addEventListener("click", cbMail);
 
+/* ---- Inbound E-mail automation: DL 도착편(I/B)별 연결 출발편 Handling plan 표 ---- */
+function cbMailInHtml() {
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const groups = cb.records.filter(r => r.direction === "IN").map(b => {
+    const R = cbRef(b, midnight);
+    const rows = cbBuild(b.data || {}, R.ref, "IN").filter(x => x.conx == null || x.conx < cbLimit("IN"))
+      .sort((a, z) => ((a.leg ? a.leg.sched : a.t) ?? 1e9) - ((z.leg ? z.leg.sched : z.t) ?? 1e9));
+    return { label: mDl(b.dl_flight), ref: R.ref, rows };
+  }).sort((a, z) => a.ref - z.ref);
+  if (!groups.length) return "";
+  const B = "border:1px solid #000;padding:2px 6px;text-align:center;", H = B + "background:#f8cbad;font-weight:bold;", RED = "color:#c00000;";
+  const th = (t, extra = "") => `<td bgcolor="#f8cbad" style="${H}"${extra}>${t}</td>`;
+  let html = `<table border="1" cellspacing="0" cellpadding="3" style="border-collapse:collapse;border:1px solid #000;font-family:Calibri,'Malgun Gothic',sans-serif;font-size:10pt;">`
+    + `<tr>${th("I/B", ` rowspan="2"`)}${th("ETA", ` rowspan="2"`)}${th("편명", ` rowspan="2"`)}${th("목적지", ` rowspan="2"`)}${th("STD", ` rowspan="2"`)}${th("ETD", ` rowspan="2"`)}${th("GATE", ` rowspan="2"`)}${th("PAX", ` colspan="3"`)}${th("BAG", ` rowspan="2"`)}${th("CONX<br>TIME", ` rowspan="2"`)}${th("ETD<br>CONX<br>TIME", ` rowspan="2"`)}${th("REMARKS", ` rowspan="2"`)}</tr>`
+    + `<tr>${th("(C)")}${th("(Y)")}${th("(INFT)")}</tr>`;
+  for (const g of groups) {
+    const n = Math.max(1, g.rows.length);
+    const lead = `<td style="${B}" rowspan="${n}">${esc(g.label)}</td><td style="${B}" rowspan="${n}">${mHm(g.ref)}</td>`;
+    if (!g.rows.length) { html += `<tr>${lead}<td colspan="12" bgcolor="#d9d9d9" style="${B}background:#d9d9d9;text-align:left;">NIL</td></tr>`; continue; }
+    g.rows.forEach((x, i) => {
+      const std = x.leg ? x.leg.sched : x.t, etd = x.leg && eff(x.leg) !== x.leg.sched ? eff(x.leg) : null;
+      const c = std == null ? null : std - g.ref, ec = etd == null ? null : etd - g.ref;
+      let rem = "";
+      if (c != null) {
+        if (c < 30) rem = `<span style="${RED}">MISCONX, RRT TO </span>`;
+        else if (c < 45) rem = `CVR SAME FLT WZ ESCT (BLK IN 기준 45분 충족 시)`;
+        else if (c < 60) rem = "CVR SAME FLT WZ ESCT";
+        else rem = "CVR SAME FLT";
+      }
+      const red = v => v != null && v < 60 ? RED : "";
+      html += `<tr>${i === 0 ? lead : ""}<td style="${B}">${esc(x.label)}${x.cs.length ? `<br>(${esc(x.cs.join(", "))})` : ""}</td><td style="${B}">${esc((x.leg && x.leg.apt) || x.frm)}</td>`
+        + `<td style="${B}">${mHm(std)}</td><td style="${B}${etd != null ? RED : ""}">${etd != null ? mHm(etd) : "-"}</td><td style="${B}">${x.leg ? esc(x.leg.gate || "-") : "-"}</td>`
+        + `<td style="${B}">${x.c + x.f}</td><td style="${B}">${x.w + x.y}</td><td style="${B}">0</td><td style="${B}">${x.bags != null ? x.bags : "-"}</td>`
+        + `<td style="${B}${red(c)}">${mConx(c)}</td><td style="${B}${red(ec)}">${ec != null ? mConx(ec) : "-"}</td><td style="${B}text-align:left;white-space:nowrap;">${rem}</td></tr>`;
+    });
+  }
+  return html + `</table>`;
+}
+async function cbMailIn() {
+  const msg = $("#cbMailInMsg"), box = $("#cbMailInPreview");
+  const html = cbMailInHtml();
+  if (!html) { msg.textContent = "There is no Inbound board to put in the e-mail."; return; }
+  box.innerHTML = html; box.hidden = false;
+  const plain = [...box.querySelectorAll("tr")].map(tr => [...tr.children].map(td => td.textContent.trim()).join("\t")).join("\n");
+  let copied = false;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([`<html><body>${html}</body></html>`], { type: "text/html" }), "text/plain": new Blob([plain], { type: "text/plain" }) })]);
+    copied = true;
+  } catch (e) {}
+  msg.textContent = copied ? "Table copied. In the Outlook window, click below \"2. Handling plan\" and press Ctrl+V." : "The table could not be copied automatically. Select the table below, copy it (Ctrl+C) and paste it into the e-mail.";
+  const body = ["안녕하십니까,", "금일 인바운드편 지연 Handling plan 공유드립니다.", "", "", "2. Handling plan", "", ""].join("\r\n");
+  const a = document.createElement("a");
+  a.href = "mailto:?subject=&body=" + encodeURIComponent(body);
+  document.body.appendChild(a); a.click(); a.remove();
+}
+$("#cbMailIn").addEventListener("click", cbMailIn);
+
 /* ---- Gate Planner ver2: 로그인한 사용자에게만 보이는 Gate Planner + 환승 현황 배지 ----
    화면은 기존 Gate Planner 와 같고, 로그인 세션(SB)은 Connection Planner 와 공유합니다.
    환승객·가방 숫자는 Supabase(arrival_connections)에서 로그인 후에만 읽어 오며, data.js 에는 들어 있지 않습니다. */
@@ -2465,7 +2269,7 @@ $("#g2Form").addEventListener("submit", async e => {
   btn.disabled = !!SB.problem();
 });
 $("#v2Refresh").addEventListener("click", cpRefresh);
-$("#v2SignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; cxRender(); showView("gate2"); });
+$("#v2SignOut").addEventListener("click", async () => { await SB.signOut(); cp.records = []; showView("gate2"); });
 setInterval(() => { if (v2On() && SB.session && !SB.problem()) cpRefresh(); }, 30000);
 
 function currentView() { const h = typeof location !== "undefined" ? location.hash : ""; return /^#connection(\/(outbound|upload))?$/.test(h) ? "connection" : h === "#gate2" ? "gate2" : "gate"; }
