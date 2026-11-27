@@ -422,6 +422,7 @@ body.ver2 .v2bar { display: flex; }
 .cb-review td { padding: 3px 4px; }
 .cx-form .cb-review input { height: 34px; padding: 0 8px; font-size: 14px; }
 .cb-review .cb-x { height: 34px; padding: 0 10px; }
+.cb-mail { margin: 16px 24px 0; padding: 12px; overflow-x: auto; background: #fff; color: #000; border: 1px solid var(--line); border-radius: 4px; }
 .cb-boards { padding: 16px 24px 24px; display: grid; gap: 20px; }
 .fids { background: #0a1220; color: #ffc61a; border-radius: 6px; border: 1px solid #24344d; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.25); overflow: hidden; font-family: "Lato", "Noto Sans KR", monospace; }
 .fids-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; padding: 14px 20px; background: #101c33; border-bottom: 2px solid #ffc61a; }
@@ -703,8 +704,9 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
     </section>
 
     <section class="panel cp-app" id="cpOut" hidden>
-      <div class="cp-bar"><h2 class="cx-title">Outbound</h2><div class="cp-user"><button type="button" class="btn ghost small" id="cbOutRefresh">Refresh</button></div></div>
+      <div class="cp-bar"><h2 class="cx-title">Outbound</h2><div class="cp-user"><span id="cbMailMsg" role="status"></span><button type="button" class="btn small" id="cbMail">E-mail automation</button><button type="button" class="btn ghost small" id="cbOutRefresh">Refresh</button></div></div>
       <div class="cp-note">Connection boards for DL departure flights uploaded in Data upload (Outbound). Details are discarded automatically 24 hours after they are saved.</div>
+      <div class="cb-mail" id="cbMailPreview" hidden></div>
       <div class="cb-boards" id="cbBoardsOut"></div>
     </section>
 
@@ -2300,6 +2302,92 @@ $("#cbBoardsIn").addEventListener("click", cbDiscard);
 $("#cbBoardsOut").addEventListener("click", cbDiscard);
 setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cbRefresh(); }, 30000);
 cbDirUi();
+
+/* ====================================================================
+   E-mail automation (Outbound 페이지)
+   - 오늘 DL 출발편별로 연결 도착편 표를 정해진 양식(DATE / O/B / STD(ETD) / FLT / ORG / STA / ETA / CONX TIME / GATE / PAX / BAG / 조치사항)으로 만들어
+     클립보드에 복사하고, 제목·수신처가 빈 Outlook 새 메일 창을 엽니다. 본문 인사말은 미리 채워지고 표는 Ctrl+V 로 붙여 넣습니다.
+   - 표는 전광판과 같은 계산(실시간 운항 데이터, CONX 180분 이상 제외)을 씁니다. 연결 정보가 없는 DL 출발편은 NIL 로 표시합니다.
+   - 조치사항은 기본 문구이며 메일에 붙여 넣은 뒤 직접 고칠 수 있습니다.
+     CONX 30분 미만: MISCONX / 30~50분: CVR SAME FLT WZ ESCT (ETD-45분 이전 BLK IN 조건) / 50~60분: CVR SAME FLT WZ ESCT / 60분 이상: CVR SAME FLT
+==================================================================== */
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const mHm = t => { if (t == null) return "-"; const d = t >= 1440 ? "(+1)" : t < 0 ? "(-1)" : ""; const m = ((t % 1440) + 1440) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}${d}`; };
+const mConx = c => c == null ? "-" : `${c < 0 ? "-" : ""}${Math.floor(Math.abs(c) / 60)}:${pad(Math.abs(c) % 60)}`;
+const mDl = f => String(f || "").toUpperCase().replace(/^([A-Z]{2})0+(?=\d)/, "$1");
+function cbMailGroups() {
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const groups = [], used = new Set();
+  for (const b of cb.records.filter(r => r.direction === "OUT")) {
+    const R = cbRef(b, midnight);
+    if (R.own) used.add(R.own);
+    const rows = cbBuild(b.data || {}, R.ref, "OUT").filter(x => x.conx == null || x.conx < 180)
+      .sort((a, z) => ((a.leg ? a.leg.sched : a.t) ?? 1e9) - ((z.leg ? z.leg.sched : z.t) ?? 1e9));
+    groups.push({ label: mDl(b.dl_flight), own: R.own, ref: R.ref, std: R.own ? R.own.sched : R.entered, rows });
+  }
+  for (const l of state.flights || []) {                                       // 연결 정보가 없는 오늘의 DL 출발편
+    if (l.dir === "DEP" && /^DL0*\d{1,4}[A-Z]?$/.test(l.flight) && eff(l) >= 0 && eff(l) < 1440 && !used.has(l)) groups.push({ label: mDl(l.flight), own: l, ref: eff(l), std: l.sched, rows: [] });
+  }
+  return groups.sort((a, z) => a.ref - z.ref);
+}
+function cbMailHtml() {
+  const groups = cbMailGroups();
+  if (!groups.length) return "";
+  const B = "border:1px solid #000;padding:2px 6px;text-align:center;", H = B + "background:#f8cbad;font-weight:bold;", RED = "color:#c00000;font-weight:bold;";
+  const th = (t, extra = "") => `<td bgcolor="#f8cbad" style="${H}"${extra}>${t}</td>`;
+  const byDate = new Map();
+  groups.forEach(g => { const k = Math.floor(g.ref / 1440); (byDate.get(k) || byDate.set(k, []).get(k)).push(g); });
+  let html = `<table border="1" cellspacing="0" cellpadding="3" style="border-collapse:collapse;border:1px solid #000;font-family:Calibri,'Malgun Gothic',sans-serif;font-size:10pt;">`
+    + `<tr>${th("DATE", ` rowspan="2"`)}${th("O/B", ` rowspan="2"`)}${th(`STD<span style="color:#c00000">(ETD)</span>`, ` rowspan="2"`)}${th("FLT", ` rowspan="2"`)}${th("ORG", ` rowspan="2"`)}${th("STA", ` rowspan="2"`)}${th("ETA", ` rowspan="2"`)}${th("CONX<br>TIME", ` rowspan="2"`)}${th("GATE", ` rowspan="2"`)}${th("PAX", ` colspan="3"`)}${th("BAG", ` rowspan="2"`)}${th("조치사항", ` rowspan="2"`)}</tr>`
+    + `<tr>${th("C")}${th("F")}${th("WY")}</tr>`;
+  for (const [day, gs] of byDate) {
+    const dt = new Date(); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() + day);
+    const total = gs.reduce((a, g) => a + Math.max(1, g.rows.length), 0);
+    let firstOfDay = true;
+    for (const g of gs) {
+      const n = Math.max(1, g.rows.length);
+      const etd = g.ref !== g.std ? `<span style="${RED}">(${mHm(g.ref)})</span>` : "";
+      const lead = (firstOfDay ? `<td style="${B}" rowspan="${total}">${dt.getDate()}-${MON[dt.getMonth()]}</td>` : "")
+        + `<td style="${B}" rowspan="${n}">${esc(g.label)}</td><td style="${B}" rowspan="${n}">${mHm(g.std)}${etd}</td>`;
+      firstOfDay = false;
+      if (!g.rows.length) { html += `<tr>${lead}<td colspan="11" bgcolor="#d9d9d9" style="${B}background:#d9d9d9;text-align:left;">NIL</td></tr>`; continue; }
+      g.rows.forEach((x, i) => {
+        const c = x.conx, green = c != null && c >= 30 && c < 50, bg = green ? ` bgcolor="#e2efda"` : "", st = B + (green ? "background:#e2efda;" : "");
+        let act = "";
+        if (c != null) {
+          if (c < 30) act = `<span style="${RED}">MISCONX</span>`;
+          else if (c < 50) act = `CVR SAME FLT WZ ESCT <b>(${pad(Math.floor(((g.ref - 45) % 1440 + 1440) % 1440 / 60))}${pad(((g.ref - 45) % 60 + 60) % 60)}L 이전 BLK IN 조건)</b>`;
+          else if (c < 60) act = "CVR SAME FLT WZ ESCT";
+          else act = "CVR SAME FLT";
+        }
+        html += `<tr>${i === 0 ? lead : ""}<td${bg} style="${st}">${esc(x.label)}</td><td${bg} style="${st}">${esc((x.leg && x.leg.apt) || x.frm)}</td>`
+          + `<td${bg} style="${st}">${x.leg ? mHm(x.leg.sched) : "-"}</td><td${bg} style="${st}">${mHm(x.t)}</td>`
+          + `<td${bg} style="${st}${c != null && c < 60 ? RED : ""}">${mConx(c)}</td><td${bg} style="${st}">${x.leg ? esc(x.leg.gate || "-") : "-"}</td>`
+          + `<td${bg} style="${st}">${x.c}</td><td${bg} style="${st}">${x.f}</td><td${bg} style="${st}">${x.w + x.y}</td><td${bg} style="${st}">${x.bags ? x.bags : "-"}</td>`
+          + `<td${bg} style="${st}text-align:left;white-space:nowrap;">${act}</td></tr>`;
+      });
+    }
+  }
+  return html + `</table>`;
+}
+async function cbMail() {
+  const msg = $("#cbMailMsg"), box = $("#cbMailPreview");
+  const html = cbMailHtml();
+  if (!html) { msg.textContent = "There is no Outbound board or DL departure to put in the e-mail."; return; }
+  box.innerHTML = html; box.hidden = false;                                     // 화면에도 미리 보여 줍니다 (복사가 막힌 경우 직접 복사)
+  const plain = [...box.querySelectorAll("tr")].map(tr => [...tr.children].map(td => td.textContent.trim()).join("\t")).join("\n");
+  let copied = false;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([`<html><body>${html}</body></html>`], { type: "text/html" }), "text/plain": new Blob([plain], { type: "text/plain" }) })]);
+    copied = true;
+  } catch (e) {}
+  msg.textContent = copied ? "Table copied. In the Outlook window, click below \"1. FLT현황\" and press Ctrl+V." : "The table could not be copied automatically. Select the table below, copy it (Ctrl+C) and paste it into the e-mail.";
+  const body = ["안녕하십니까,", "금일 DL FLT으로 연결되는 인바운드 도착 관련하여 아래와 같이 업데이트 안내 드리오니 업무에 참고하여 주시기 바랍니다.", "", "1. FLT현황", "", ""].join("\r\n");
+  const a = document.createElement("a");
+  a.href = "mailto:?subject=&body=" + encodeURIComponent(body);                    // 제목과 수신처는 비워 둡니다
+  document.body.appendChild(a); a.click(); a.remove();
+}
+$("#cbMail").addEventListener("click", cbMail);
 
 /* ---- Gate Planner ver2: 로그인한 사용자에게만 보이는 Gate Planner + 환승 현황 배지 ----
    화면은 기존 Gate Planner 와 같고, 로그인 세션(SB)은 Connection Planner 와 공유합니다.
