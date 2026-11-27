@@ -703,7 +703,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
     </section>
 
     <section class="panel cp-app" id="cpOut" hidden>
-      <div class="cp-bar"><h2 class="cx-title">Outbound</h2></div>
+      <div class="cp-bar"><h2 class="cx-title">Outbound</h2><div class="cp-user"><button type="button" class="btn ghost small" id="cbOutRefresh">Refresh</button></div></div>
       <div class="cp-note">Connection boards for DL departure flights uploaded in Data upload (Outbound). Details are discarded automatically 24 hours after they are saved.</div>
       <div class="cb-boards" id="cbBoardsOut"></div>
     </section>
@@ -1263,6 +1263,7 @@ async function load(first) {
     state.win = { start: startAbs - midAbs, end: startAbs - midAbs + WIN.before + WIN.ahead };
     const flights = await Api.flights();
     state.flights = flights;
+    try { if (!$("#viewConn").hidden && cb.records.length) cbRender(); } catch (e) {}      // 운항 데이터가 갱신되면 전광판의 게이트·시각·CONX 를 바로 다시 계산
     state.otp = { a: otpStats(flights, "ARR"), d: otpStats(flights, "DEP") };
     state.items = buildOccupancies(flights).filter(it => (it.gate === "" || GATES.includes(it.gate)) && it._e > state.win.start && it._s < state.win.end);
     const conflicts = analyze(state.items);
@@ -2215,18 +2216,32 @@ async function cbRefresh() {
   catch (e) { cbHandleError(e); }
 }
 
+/* 기준 시각: 입력한 ETD/ETA 는 처음 값일 뿐이므로, Gate Planner 데이터(공공데이터 API)에서 DL 편 자체를 찾으면 그 편의 최신 시각(실제, 변경, 예정 순)을 씁니다.
+   못 찾으면 입력한 시각을 그대로 씁니다. 데이터가 갱신될 때마다 다시 계산됩니다. */
+function cbOwnLeg(b, ref) {
+  const want = b.direction === "OUT" ? "DEP" : "ARR", key = cbNorm(b.dl_flight);
+  const c = (state.flights || []).filter(l => l.dir === want && (cbNorm(l.flight) === key || (l.cs || []).some(n => cbNorm(n) === key)) && (Math.abs(l.sched - ref) <= 360 || Math.abs(eff(l) - ref) <= 360));
+  return c.length ? c.sort((a, z) => Math.abs(eff(a) - ref) - Math.abs(eff(z) - ref))[0] : null;
+}
+function cbRef(b, midnight) {
+  const entered = Math.round((new Date(b.time_at).getTime() - midnight.getTime()) / 60000);
+  const own = cbOwnLeg(b, entered);
+  return { entered, own, ref: own ? eff(own) : entered };
+}
+
 /* FIDS 전광판: 보드 하나가 DL 편 하나입니다. Inbound 보드는 Inbound 페이지에, Outbound 보드는 Outbound 페이지에 나옵니다. */
 function cbBoardHtml(b, midnight) {
   const out = b.direction === "OUT", d = b.data || {};
-  const ref = Math.round((new Date(b.time_at).getTime() - midnight.getTime()) / 60000);
+  const R = cbRef(b, midnight), ref = R.ref;
+  const refTxt = R.own ? `${fmt(ref)}<small> ${ref !== R.entered ? `live (entered ${esc(b.time_hhmm)})` : "live"}</small>` : `${esc(b.time_hhmm)}<small> entered</small>`;
   const built = cbBuild(d, ref, b.direction).sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
   const rows = built.filter(x => x.conx == null || x.conx < 180);                // 연결 시간이 180분 이상이면 표시하지 않습니다
   const hidden = built.length - rows.length;
   const pax = rows.reduce((a, x) => a + x.pax, 0), bags = rows.reduce((a, x) => a + (x.bags || 0), 0);
   const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
   const asOf = state.meta && state.meta.generatedAt ? ` · Flight data as of ${esc(String(state.meta.generatedAt).slice(11, 16))} KST` : "";
-  const head = `<div class="fids-head"><h3>${esc(b.dl_flight)}<small>${out ? "DEPARTURE · ETD" : "ARRIVAL · ETA"} ${esc(b.time_hhmm)}</small></h3>
-      <div class="fids-meta">${rows.length} connecting flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}${hidden ? ` · ${hidden} hidden (CONX 180 min or more)` : ""}${asOf}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>`;
+  const head = `<div class="fids-head"><h3>${esc(b.dl_flight)}<small>${out ? "DEPARTURE · ETD" : "ARRIVAL · ETA"} ${refTxt}</small></h3>
+      <div class="fids-meta">${rows.length} connecting flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}${hidden ? ` · ${hidden} hidden (CONX 180 min or more)` : ""}${asOf} · recalculated ${(() => { const t = new Date(); return `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`; })()}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>`;
   if (!out) {                                                                     // Inbound 보드: Departure flight / To / Gate / ETD / Total pax / Total bags / CONX Time
     const body = rows.map(x => {
       const cls = x.conx == null ? "" : x.conx < 45 ? "x-mis" : x.conx < 60 ? "x-chk" : "";   // 45분 미만 빨강, 45~60분 노랑
@@ -2273,7 +2288,8 @@ $("#cbFile").addEventListener("change", async e => {
   cbPreview();
 });
 $("#cbRefresh").addEventListener("click", cbRefresh);
-$("#cpRefresh").addEventListener("click", cbRefresh);
+$("#cpRefresh").addEventListener("click", () => { load(false); cbRefresh(); });
+$("#cbOutRefresh").addEventListener("click", () => { load(false); cbRefresh(); });
 async function cbDiscard(e) {
   const b = e.target.closest("button[data-bid]"); if (!b) return;
   if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Confirm discard"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "Discard now"; }, 4000); return; }
@@ -2323,7 +2339,7 @@ function cbLegMap() {
   const m = new Map(), midnight = new Date(); midnight.setHours(0, 0, 0, 0);
   const add = (leg, a) => { if (!m.has(leg)) m.set(leg, []); m.get(leg).push(a); };
   for (const b of cb.records) {
-    const ref = Math.round((new Date(b.time_at).getTime() - midnight.getTime()) / 60000);
+    const ref = cbRef(b, midnight).ref;
     const rows = cbBuild(b.data || {}, ref, b.direction).filter(x => x.conx == null || x.conx < 180);
     for (const x of rows) {
       if (x.leg) add(x.leg, { dl: b.dl_flight, dir: b.direction, pax: x.pax, bags: x.bags, conx: x.conx, total: false });
