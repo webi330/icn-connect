@@ -422,6 +422,8 @@ body.ver2 .v2bar { display: flex; }
 .cb-review td { padding: 3px 4px; }
 .cx-form .cb-review input { height: 34px; padding: 0 8px; font-size: 14px; }
 .cb-review .cb-x { height: 34px; padding: 0 10px; }
+.cp-legacy { border-top: 1px solid var(--line); margin-top: 8px; }
+.cp-legacy > summary { cursor: pointer; padding: 12px 24px; font-weight: 700; color: var(--muted); }
 .cb-mail { margin: 16px 24px 0; padding: 12px; overflow-x: auto; background: #fff; color: #000; border: 1px solid var(--line); border-radius: 4px; }
 .cb-boards { padding: 16px 24px 24px; display: grid; gap: 20px; }
 .fids { background: #0a1220; color: #ffc61a; border-radius: 6px; border: 1px solid #24344d; box-shadow: 0 6px 24px rgba(0, 20, 50, 0.25); overflow: hidden; font-family: "Lato", "Noto Sans KR", monospace; }
@@ -671,13 +673,17 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
 
     <section class="panel cp-app" id="cpApp" hidden>
       <div class="cp-bar">
-        <h2 class="cx-title">Please update the arrival flight connection details</h2>
+        <h2 class="cx-title">Inbound</h2>
         <div class="cp-user">
           <span id="cpUser"></span>
           <button type="button" class="btn ghost small" id="cpRefresh">Refresh</button>
           <button type="button" class="btn ghost small" id="cpSignOut">Sign out</button>
         </div>
       </div>
+      <div class="cp-note">Connection boards for DL arrival flights uploaded in Data upload (Inbound). Details are discarded automatically 24 hours after they are saved.</div>
+      <div class="cb-boards" id="cbBoardsIn"></div>
+      <details class="cp-legacy">
+      <summary>Arrival connection details (previous upload form)</summary>
       <div class="cp-note">Details are discarded automatically 24 hours after they are updated. Only the recognized numbers are saved, not the attached file.</div>
       <form class="cx-form" id="cxForm" autocomplete="off">
         <div>
@@ -700,7 +706,7 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
         </div>
       </form>
       <div id="cxResults"></div>
-      <div class="cb-boards" id="cbBoardsIn"></div>
+      </details>
     </section>
 
     <section class="panel cp-app" id="cpOut" hidden>
@@ -2232,18 +2238,20 @@ function cbRef(b, midnight) {
 }
 
 /* FIDS 전광판: 보드 하나가 DL 편 하나입니다. Inbound 보드는 Inbound 페이지에, Outbound 보드는 Outbound 페이지에 나옵니다. */
+const cbLimit = dir => 100;                                    // 연결 시간이 이 값(분) 이상이면 표시하지 않습니다 (Inbound·Outbound 모두 100분)
 function cbBoardHtml(b, midnight) {
   const out = b.direction === "OUT", d = b.data || {};
   const R = cbRef(b, midnight), ref = R.ref;
   const refTxt = R.own ? `${fmt(ref)}<small> ${ref !== R.entered ? `live (entered ${esc(b.time_hhmm)})` : "live"}</small>` : `${esc(b.time_hhmm)}<small> entered</small>`;
   const built = cbBuild(d, ref, b.direction).sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
-  const rows = built.filter(x => x.conx == null || x.conx < 180);                // 연결 시간이 180분 이상이면 표시하지 않습니다
+  const LIM = cbLimit(b.direction);
+  const rows = built.filter(x => x.conx == null || x.conx < LIM);
   const hidden = built.length - rows.length;
   const pax = rows.reduce((a, x) => a + x.pax, 0), bags = rows.reduce((a, x) => a + (x.bags || 0), 0);
   const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
   const asOf = state.meta && state.meta.generatedAt ? ` · Flight data as of ${esc(String(state.meta.generatedAt).slice(11, 16))} KST` : "";
   const head = `<div class="fids-head"><h3>${esc(b.dl_flight)}<small>${out ? "DEPARTURE · ETD" : "ARRIVAL · ETA"} ${refTxt}</small></h3>
-      <div class="fids-meta">${rows.length} connecting flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}${hidden ? ` · ${hidden} hidden (CONX 180 min or more)` : ""}${asOf} · recalculated ${(() => { const t = new Date(); return `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`; })()}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>`;
+      <div class="fids-meta">${rows.length} connecting flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}${hidden ? ` · ${hidden} hidden (CONX ${LIM} min or more)` : ""}${asOf} · recalculated ${(() => { const t = new Date(); return `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`; })()}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>`;
   if (!out) {                                                                     // Inbound 보드: Departure flight / To / Gate / ETD / Total pax / Total bags / CONX Time
     const body = rows.map(x => {
       const cls = x.conx == null ? "" : x.conx < 45 ? "x-mis" : x.conx < 60 ? "x-chk" : "";   // 45분 미만 빨강, 45~60분 노랑
@@ -2252,7 +2260,7 @@ function cbBoardHtml(b, midnight) {
         <td class="n">${x.pax}</td><td class="n">${x.bags == null ? "—" : x.bags}</td><td class="n cx">${x.conx == null ? "—" : x.conx + " min"}</td></tr>`;
     }).join("");
     return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">${head}
-    <div class="tablewrap"><table><thead><tr><th>Departure flight</th><th>To</th><th>Gate</th><th>ETD</th><th class="n">Total pax</th><th class="n">Total bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under 180 minutes.</td></tr>`}</tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th>Departure flight</th><th>To</th><th>Gate</th><th>ETD</th><th class="n">Total pax</th><th class="n">Total bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under ${LIM} minutes.</td></tr>`}</tbody></table></div>
   </div>`;
   }
   const body = rows.map(x => {
@@ -2266,14 +2274,14 @@ function cbBoardHtml(b, midnight) {
       <td class="n cx">${x.conx == null ? "—" : x.conx + " min"}</td></tr>`;
   }).join("");
   return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">${head}
-    <div class="tablewrap"><table><thead><tr><th>Arriving flight</th><th>From</th><th>Gate</th><th>ETA</th><th class="n">Total pax</th><th class="n">Bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under 180 minutes.</td></tr>`}</tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th>Arriving flight</th><th>From</th><th>Gate</th><th>ETA</th><th class="n">Total pax</th><th class="n">Bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under ${LIM} minutes.</td></tr>`}</tbody></table></div>
   </div>`;
 }
 function cbRender() {
   if (SB.session) $("#cbUser").textContent = SB.session.email;
   const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
   const inb = cb.records.filter(b => b.direction === "IN"), out = cb.records.filter(b => b.direction === "OUT");
-  $("#cbBoardsIn").innerHTML = inb.map(b => cbBoardHtml(b, midnight)).join("");
+  $("#cbBoardsIn").innerHTML = inb.length ? inb.map(b => cbBoardHtml(b, midnight)).join("") : `<div class="cp-empty">No inbound boards yet. Use Data upload, choose Inbound, enter the DL arrival flight and ETA, and attach the .txt report.</div>`;
   $("#cbBoardsOut").innerHTML = out.length ? out.map(b => cbBoardHtml(b, midnight)).join("") : `<div class="cp-empty">No outbound boards yet. Use Data upload, choose Outbound, enter the DL departure flight and ETD, and attach the .txt report.</div>`;
   if (typeof v2Rerender === "function") v2Rerender();                                   // Gate Planner ver2 막대의 숫자도 같이 갱신
 }
@@ -2307,7 +2315,7 @@ cbDirUi();
    E-mail automation (Outbound 페이지)
    - 오늘 DL 출발편별로 연결 도착편 표를 정해진 양식(DATE / O/B / STD(ETD) / FLT / ORG / STA / ETA / CONX TIME / GATE / PAX / BAG / 조치사항)으로 만들어
      클립보드에 복사하고, 제목·수신처가 빈 Outlook 새 메일 창을 엽니다. 본문 인사말은 미리 채워지고 표는 Ctrl+V 로 붙여 넣습니다.
-   - 표는 전광판과 같은 계산(실시간 운항 데이터, CONX 180분 이상 제외)을 씁니다. 연결 정보가 없는 DL 출발편은 NIL 로 표시합니다.
+   - 표는 전광판과 같은 계산(실시간 운항 데이터, CONX 100분 이상 제외)을 씁니다. 연결 정보가 없는 DL 출발편은 NIL 로 표시합니다.
    - 조치사항은 기본 문구이며 메일에 붙여 넣은 뒤 직접 고칠 수 있습니다.
      CONX 30분 미만: MISCONX / 30~50분: CVR SAME FLT WZ ESCT (ETD-45분 이전 BLK IN 조건) / 50~60분: CVR SAME FLT WZ ESCT / 60분 이상: CVR SAME FLT
 ==================================================================== */
@@ -2321,7 +2329,7 @@ function cbMailGroups() {
   for (const b of cb.records.filter(r => r.direction === "OUT")) {
     const R = cbRef(b, midnight);
     if (R.own) used.add(R.own);
-    const rows = cbBuild(b.data || {}, R.ref, "OUT").filter(x => x.conx == null || x.conx < 180)
+    const rows = cbBuild(b.data || {}, R.ref, "OUT").filter(x => x.conx == null || x.conx < cbLimit("OUT"))
       .sort((a, z) => ((a.leg ? a.leg.sched : a.t) ?? 1e9) - ((z.leg ? z.leg.sched : z.t) ?? 1e9));
     groups.push({ label: mDl(b.dl_flight), own: R.own, ref: R.ref, std: R.own ? R.own.sched : R.entered, rows });
   }
@@ -2422,13 +2430,13 @@ function v2Tip(it) {
 /* 전광판(Data upload 로 올린 보드)에 표시된 연결편의 막대에 DL 환승객·가방 수를 붙입니다.
    - Outbound 보드(DL 출발편): 연결 도착편의 막대에만 표시 (DL 출발편 막대에는 표시하지 않음)
    - Inbound 보드(DL 도착편): 연결 출발편의 막대에만 표시 (DL 도착편 막대에는 표시하지 않음)
-   보드와 같은 규칙(연결 시간 180분 이상은 제외)으로 계산합니다. */
+   보드와 같은 규칙(연결 시간 100분 이상은 제외)으로 계산합니다. */
 function cbLegMap() {
   const m = new Map(), midnight = new Date(); midnight.setHours(0, 0, 0, 0);
   const add = (leg, a) => { if (!m.has(leg)) m.set(leg, []); m.get(leg).push(a); };
   for (const b of cb.records) {
     const ref = cbRef(b, midnight).ref;
-    const rows = cbBuild(b.data || {}, ref, b.direction).filter(x => x.conx == null || x.conx < 180);
+    const rows = cbBuild(b.data || {}, ref, b.direction).filter(x => x.conx == null || x.conx < cbLimit(b.direction));
     for (const x of rows) {
       if (x.leg) add(x.leg, { dl: b.dl_flight, dir: b.direction, pax: x.pax, bags: x.bags, conx: x.conx, total: false });
     }
