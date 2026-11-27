@@ -696,12 +696,13 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
         </div>
       </form>
       <div id="cxResults"></div>
+      <div class="cb-boards" id="cbBoardsIn"></div>
     </section>
 
     <section class="panel cp-app" id="cpOut" hidden>
       <div class="cp-bar"><h2 class="cx-title">Outbound</h2></div>
-      <div class="cp-note">Outbound connection details will be available here.</div>
-      <div class="cp-empty" style="padding:40px 24px">Coming soon.</div>
+      <div class="cp-note">Connection boards for DL departure flights uploaded in Data upload (Outbound). Details are discarded automatically 24 hours after they are saved.</div>
+      <div class="cb-boards" id="cbBoardsOut"></div>
     </section>
 
     <section class="panel cp-app" id="cpUp" hidden>
@@ -709,18 +710,22 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
         <h2 class="cx-title">Data upload</h2>
         <div class="cp-user"><span id="cbUser"></span><button type="button" class="btn ghost small" id="cbRefresh">Refresh</button></div>
       </div>
-      <div class="cp-note">Upload the connecting-arrivals report (.txt) for a DL departure. Gate and ETA of each arriving flight come from the Gate Planner data. Only the numbers read from the report are saved, not the file, and they are discarded automatically 24 hours after saving.</div>
+      <div class="cp-note">Choose Inbound or Outbound, enter the DL flight and its time, then attach the connection report (.txt). Gate and time of each connecting flight come from the Gate Planner data (public data API). Only the numbers read from the report are saved, not the file, and they are discarded automatically 24 hours after saving.</div>
       <form class="cx-form" id="cbForm" autocomplete="off">
+        <div class="cx-wide cb-dir" role="radiogroup" aria-label="Direction">
+          <label><input type="radio" name="cbDir" value="IN" checked> Inbound</label>
+          <label><input type="radio" name="cbDir" value="OUT"> Outbound</label>
+        </div>
         <div>
-          <label for="cbFlight">DL departure flight</label>
+          <label for="cbFlight" id="cbFlightLbl">DL arrival flight</label>
           <div class="cx-flight"><span class="cx-prefix">DL</span><input id="cbFlight" maxlength="5" placeholder="188" required></div>
         </div>
         <div>
-          <label for="cbTime">ETD (HH:MM)</label>
+          <label for="cbTime" id="cbTimeLbl">ETA (HH:MM)</label>
           <input id="cbTime" maxlength="5" placeholder="14:35" inputmode="numeric" required>
         </div>
         <div>
-          <label for="cbFile">Connecting-arrivals report (.txt)</label>
+          <label for="cbFile">Connection report (.txt)</label>
           <input type="file" id="cbFile" accept=".txt,text/plain">
         </div>
         <div class="cx-wide cx-preview" id="cbStatus" aria-live="polite"></div>
@@ -729,7 +734,6 @@ footer .wrap { padding-top: 22px; padding-bottom: 22px; display: flex; justify-c
           <button class="btn" type="submit" id="cbSave">Save and show board</button>
         </div>
       </form>
-      <div class="cb-boards" id="cbBoards"></div>
     </section>
     </div>
     </div>
@@ -2024,7 +2028,7 @@ function cbParseReport(text) {
     const U = raw.toUpperCase().replace(/\s+$/, "");
     if (!U.trim()) continue;
     let m;
-    if ((m = U.match(/INBOUND CONNECTIONS TO\s+(\S+)/))) { out.report = m[1].slice(0, 20); continue; }
+    if ((m = U.match(/CONNECTIONS\s+(?:TO|FROM)\s+(\S+)/))) { out.report = m[1].slice(0, 20); continue; }
     if ((m = U.match(/^\s*TTL\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+).*BAG\s*TTL-?\s*(\d+)/))) { out.totals = { c: +m[1], f: +m[2], w: +m[3], y: +m[4], bags: +m[5] }; continue; }
     if ((m = U.match(/^\s*([A-Z]{2})\s*(\d{1,4})([A-Z])?\s+(\d{4})\s+([A-Z]{3})\s+(?:--|[A-Z]{2})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*$/))) {
       cur = null;
@@ -2051,36 +2055,48 @@ function cbParseReport(text) {
   return out;
 }
 
-/* Gate Planner 데이터에서 도착편 찾기. 7937 같은 번호는 DL 코드셰어 번호이므로 data.js 의 cs(코드셰어 편명) 목록도 봅니다. */
+/* Gate Planner 데이터(공공데이터 API)에서 연결편 찾기
+   - 7937 같은 번호는 DL 코드셰어 번호입니다. 스크립트가 data.js 에 실제 운항사 편명(flight)과 코드셰어 편명 목록(cs)을 함께 담으므로,
+     cs 에서 DL 번호를 찾으면 실제 운항사 편(예: KE600)의 게이트와 시각을 알 수 있습니다.
+   - dir === "OUT"(DL 출발편 보드): 연결편은 도착편(ARR), "IN"(DL 도착편 보드): 연결편은 출발편(DEP) */
 const cbNorm = f => String(f || "").toUpperCase().replace(/\s+/g, "").replace(/^([A-Z0-9]{2})0+(?=\d)/, "$1");
 const cbTod = m => ((m % 1440) + 1440) % 1440;
-function cbFindArr(key, hhmm, etd, isIn) {
-  const c = (state.flights || []).filter(l => l.dir === "ARR" && (cbNorm(l.flight) === key || (l.cs || []).some(n => cbNorm(n) === key)));
+function cbFindLeg(key, hhmm, ref, isIn, dir) {
+  const want = dir === "OUT" ? "ARR" : "DEP";
+  const c = (state.flights || []).filter(l => l.dir === want && (cbNorm(l.flight) === key || (l.cs || []).some(n => cbNorm(n) === key)));
   if (!c.length) return null;
-  if (/^\d{4}$/.test(hhmm)) {                                                  // 시각이 있으면 예정 시각이 90분 안인 편만 (같은 편명이 날마다 있으므로)
+  const nearRef = (a, b) => Math.abs(eff(a) - ref) - Math.abs(eff(b) - ref);
+  /* 같은 편명이 어제·오늘·내일 모두 있으므로 날짜는 연결 방향으로 고릅니다.
+     OUT(DL 출발편): 출발 기준 시각보다 먼저 도착하는 편만 (ETD 보다 2시간까지 늦은 편은 연결 실패 확인용으로 포함)
+     IN (DL 도착편): 도착 기준 시각보다 나중에 출발하는 편만 (ETA 보다 2시간까지 이른 편 포함) */
+  const inWin = l => dir === "OUT" ? (eff(l) <= ref + 120 && eff(l) >= ref - 1440) : (eff(l) >= ref - 120 && eff(l) <= ref + 1440);
+  if (/^\d{4}$/.test(hhmm)) {                                                  // 시각이 있으면 예정 시각이 90분 안인 편만
     const t = +hhmm.slice(0, 2) * 60 + +hhmm.slice(2);
-    const near = c.filter(l => { const k = Math.abs(cbTod(l.sched) - t); return Math.min(k, 1440 - k) <= 90; });
-    return near.length ? near.sort((a, b) => Math.abs(eff(a) - etd) - Math.abs(eff(b) - etd))[0] : null;   // 그중 ETD 에 가장 가까운 날짜
+    const near = c.filter(l => { const k = Math.abs(cbTod(l.sched) - t); return Math.min(k, 1440 - k) <= 90 && inWin(l); });
+    return near.length ? near.sort(nearRef)[0] : null;
   }
-  if (isIn) { const past = c.filter(l => eff(l) <= state.now + 30); return (past.length ? past : c).sort((a, b) => eff(b) - eff(a))[0]; }   // IN: 가장 최근에 도착한 편
-  return c.sort((a, b) => Math.abs(eff(a) - etd) - Math.abs(eff(b) - etd))[0];
+  const win = c.filter(inWin);
+  if (isIn) { const past = win.filter(l => eff(l) <= state.now + 30); return past.length ? past.sort((a, b) => eff(b) - eff(a))[0] : null; }   // IN(이미 도착): 가장 최근에 도착한 편
+  return win.length ? win.sort(nearRef)[0] : null;
 }
-/* 도착편 목록 만들기: 코드 없는 DL 번호 편은 같은 항공편(코드 있는 편)이 있으면 합산합니다.
-   같은 편 판단: 1) Gate Planner 데이터에서 같은 항공편으로 찾아질 때  2) 데이터가 없으면 출발지가 같고 도착 시각이 30분 안일 때
-   3) 데이터가 없고 IN 이면 같은 출발지의 코드 있는 편이 하나뿐일 때 */
-function cbBuild(d, etd) {
+/* 연결편 목록 만들기: 코드 없는 DL 번호 편은 같은 항공편(코드 있는 편)이 있으면 합산합니다.
+   같은 편 판단: 1) Gate Planner 데이터에서 같은 항공편으로 찾아질 때  2) 데이터가 없으면 출발지가 같고 시각이 30분 안일 때
+   3) 데이터가 없고 IN 이면 같은 출발지의 코드 있는 편이 하나뿐일 때
+   CONX: OUT 보드는 입력한 ETD - 도착편 ETA, IN 보드는 출발편 ETD - 입력한 ETA */
+function cbBuild(d, ref, dir) {
   const hm = h => /^\d{4}$/.test(h) ? +h.slice(0, 2) * 60 + +h.slice(2) : null;
   const tdiff = (x, y) => { const k = Math.abs(x - y); return Math.min(k, 1440 - k); };
-  const car = (d.carrier || []).map(r => ({ r, leg: cbFindArr(cbNorm(r.flight), r.time, etd, false), nums: [] }));
+  const car = (d.carrier || []).map(r => ({ r, leg: cbFindLeg(cbNorm(r.flight), r.time, ref, false, dir), nums: [] }));
   const alone = [];
   for (const r of d.inbound || []) {
-    const leg = cbFindArr("DL" + String(r.flt).replace(/^0+/, ""), r.arvl, etd, r.arvl === "IN");
+    const isIn = r.arvl === "IN" && dir === "OUT";
+    const leg = cbFindLeg("DL" + String(r.flt).replace(/^0+/, ""), r.arvl, ref, isIn, dir);
     let host = null;
     if (leg) host = car.find(k => k.leg && (k.leg === leg || (cbNorm(k.leg.flight) === cbNorm(leg.flight) && k.leg.sched === leg.sched)));
     if (!host && !leg) {
       const sameFrm = car.filter(k => k.r.origin === r.frm);
       const t = hm(r.arvl);
-      host = t != null ? sameFrm.find(k => tdiff(hm(k.r.time), t) <= 30) : (r.arvl === "IN" && sameFrm.length === 1 ? sameFrm[0] : null);
+      host = t != null ? sameFrm.find(k => tdiff(hm(k.r.time), t) <= 30) : (isIn && sameFrm.length === 1 ? sameFrm[0] : null);
     }
     if (host) host.nums.push({ r, leg }); else alone.push({ r, leg });
   }
@@ -2088,15 +2104,19 @@ function cbBuild(d, etd) {
   for (const k of car) {
     const all = [k.r, ...k.nums.map(n => n.r)];
     const sum = key => all.reduce((a, x) => a + (+x[key] || 0), 0);
-    const bagKnown = k.nums.length > 0;
     rows.push({ label: k.r.flight, cs: k.nums.map(n => "DL" + n.r.flt), star: k.nums.some(n => n.r.star), frm: k.r.origin, leg: k.leg || (k.nums.find(n => n.leg) || {}).leg || null,
-      fileTime: k.r.time, c: sum("c"), f: sum("f"), w: sum("w"), y: sum("y"), bags: bagKnown ? k.nums.reduce((a, n) => a + n.r.bags, 0) : null, isIn: false });
+      fileTime: k.r.time, c: sum("c"), f: sum("f"), w: sum("w"), y: sum("y"), bags: k.nums.length ? k.nums.reduce((a, n) => a + n.r.bags, 0) : null, isIn: false });
   }
-  for (const x of alone) rows.push({ label: "DL" + x.r.flt, cs: [], star: x.r.star, frm: x.r.frm, leg: x.leg, fileTime: /^\d{4}$/.test(x.r.arvl) ? x.r.arvl : "", c: x.r.c, f: x.r.f, w: x.r.w, y: x.r.y, bags: x.r.bags, isIn: x.r.arvl === "IN" });
+  for (const x of alone) rows.push({ label: x.leg ? x.leg.flight : "DL" + x.r.flt, cs: x.leg ? ["DL" + x.r.flt] : [], star: x.r.star, frm: x.r.frm, leg: x.leg,   // 실제 운항사 편명을 찾았으면 그 편명으로 표시
+    fileTime: /^\d{4}$/.test(x.r.arvl) ? x.r.arvl : "", c: x.r.c, f: x.r.f, w: x.r.w, y: x.r.y, bags: x.r.bags, isIn: x.r.arvl === "IN" && dir === "OUT" });
   return rows.map(x => {
-    let eta = x.leg ? eff(x.leg) : null, src = x.leg ? "api" : "";
-    if (eta == null && /^\d{4}$/.test(x.fileTime)) { eta = Math.floor(etd / 1440) * 1440 + hm(x.fileTime); if (eta > etd) eta -= 1440; src = "file"; }
-    return Object.assign(x, { eta, src, conx: eta == null ? null : etd - eta, pax: x.c + x.f + x.w + x.y });
+    let t = x.leg ? eff(x.leg) : null, src = x.leg ? "api" : "";
+    if (t == null && /^\d{4}$/.test(x.fileTime)) {
+      t = Math.floor(ref / 1440) * 1440 + hm(x.fileTime);
+      if (dir === "OUT") { if (t > ref + 120) t -= 1440; } else if (t < ref - 120) t += 1440;     // OUT: ETD 이전(최대 2시간 늦은 편 포함)의 가장 가까운 도착, IN: ETA 이후(최대 2시간 이른 편 포함)의 가장 가까운 출발
+      src = "file";
+    }
+    return Object.assign(x, { t, src, conx: t == null ? null : (dir === "OUT" ? ref - t : t - ref), pax: x.c + x.f + x.w + x.y });
   });
 }
 function cbPreview() {
@@ -2105,24 +2125,32 @@ function cbPreview() {
   if (!p.inbound.length && !p.carrier.length) { el.innerHTML = "<b>No connecting flights were recognized.</b> Please check the file."; return; }
   const all = [...p.inbound, ...p.carrier];
   const pax = all.reduce((a, r) => a + r.c + r.f + r.w + r.y, 0), bags = p.inbound.reduce((a, r) => a + r.bags, 0);
-  el.innerHTML = `Recognized <b>${p.carrier.length}</b> flights with an airline code and <b>${p.inbound.length}</b> DL-numbered (codeshare) flights, <b>${pax}</b> pax in total${p.report ? ` · report ${esc(p.report)}` : ""}. Codeshare flights are added to the matching flight when the board is shown. Lines not read: ${p.ignored}.`;
+  el.innerHTML = `Recognized <b>${p.carrier.length}</b> flights with an airline code and <b>${p.inbound.length}</b> DL-numbered (codeshare) flights, <b>${pax}</b> pax and <b>${bags}</b> bags${p.report ? ` · report ${esc(p.report)}` : ""}. Codeshare flights are matched to the operating flight and added to the same flight when the board is shown. Lines not read: ${p.ignored}.`;
 }
 
+function cbDir() { const r = document.querySelector('input[name="cbDir"]:checked'); return r ? r.value : "IN"; }
+function cbDirUi() {
+  const out = cbDir() === "OUT";
+  $("#cbFlightLbl").textContent = out ? "DL departure flight" : "DL arrival flight";
+  $("#cbTimeLbl").textContent = out ? "ETD (HH:MM)" : "ETA (HH:MM)";
+}
 async function cbSave() {
   const err = $("#cbErr"); err.textContent = "";
+  const dir = cbDir(), out = dir === "OUT";
   const num = $("#cbFlight").value.trim().toUpperCase().replace(/^DL/, "");
-  if (!/^[0-9]{1,4}[A-Z]?$/.test(num)) { err.textContent = "Enter the DL departure flight number, for example 188."; return; }
+  if (!/^[0-9]{1,4}[A-Z]?$/.test(num)) { err.textContent = `Enter the DL ${out ? "departure" : "arrival"} flight number, for example 188.`; return; }
   const t = normEta($("#cbTime").value);
-  if (!t) { err.textContent = "Enter the ETD as HH:MM, for example 14:35."; return; }
-  if (!cb.parsed) { err.textContent = "Attach the inbound connection report (.txt) first."; return; }
+  if (!t) { err.textContent = `Enter the ${out ? "ETD" : "ETA"} as HH:MM, for example 14:35.`; return; }
+  if (!cb.parsed) { err.textContent = "Attach the connection report (.txt) first."; return; }
   if (!cb.parsed.inbound.length && !cb.parsed.carrier.length) { err.textContent = "No connecting flights were recognized in the attached file."; return; }
   const flight = "DL" + num, d = cb.parsed;
   $("#cbSave").disabled = true;
   try {
-    const saved = await SB.rest("dl_conx_boards", { method: "POST", body: { dl_flight: flight, etd_hhmm: t, etd_at: resolveEta(t).toISOString(), report_date: d.report, data: { totals: d.totals, inbound: d.inbound, carrier: d.carrier } }, prefer: "return=representation" });
+    const saved = await SB.rest("dl_conx_boards", { method: "POST", body: { direction: dir, dl_flight: flight, time_hhmm: t, time_at: resolveEta(t).toISOString(), report_date: d.report, data: { totals: d.totals, inbound: d.inbound, carrier: d.carrier } }, prefer: "return=representation" });
     const id = saved && saved[0] && saved[0].id;
-    if (id) await SB.rest(`dl_conx_boards?dl_flight=eq.${encodeURIComponent(flight)}&id=neq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=minimal" });   // 같은 편명의 이전 입력은 지웁니다
+    if (id) await SB.rest(`dl_conx_boards?dl_flight=eq.${encodeURIComponent(flight)}&direction=eq.${dir}&id=neq.${encodeURIComponent(id)}`, { method: "DELETE", prefer: "return=minimal" });   // 같은 편명·방향의 이전 입력은 지웁니다
     $("#cbFile").value = ""; cbReset(); await cbRefresh();
+    location.hash = out ? "#connection/outbound" : "#connection";                       // 저장한 방향의 페이지에서 전광판을 보여 줍니다
   } catch (e) { cbHandleError(e); }
   $("#cbSave").disabled = false;
 }
@@ -2135,36 +2163,40 @@ async function cbRefresh() {
   catch (e) { cbHandleError(e); }
 }
 
-/* FIDS 전광판: 보드 하나가 DL 출발편 하나입니다. CONX = 입력한 ETD - 각 도착편 ETA (Gate Planner 데이터) */
-function cbRender() {
-  const box = $("#cbBoards");
-  if (SB.session) $("#cbUser").textContent = SB.session.email;
-  if (!cb.records.length) { box.innerHTML = `<div class="cp-empty">No connection boards yet. Enter the DL flight and ETD, attach the .txt report and press Save.</div>`; return; }
-  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
-  box.innerHTML = cb.records.map(b => {
-    const d = b.data || {};
-    const etd = Math.round((new Date(b.etd_at).getTime() - midnight.getTime()) / 60000);
-    const rows = cbBuild(d, etd).sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
-    const body = rows.map(x => {
-      const st = x.conx == null ? null : (x.conx < 30 ? { cls: "mis" } : cxStatus(x.conx));
-      const city = x.leg && CITY[x.leg.apt] ? CITY[x.leg.apt] : (CITY[x.frm] || "");
-      return `<tr${st ? ` class="x-${st.cls}"` : ""}><td class="fl">${esc(x.label)}${x.cs.length ? `<small> ${esc(x.cs.join(" "))}</small>` : ""}${x.star ? `<small title="Marked ** in the report"> **</small>` : ""}</td>
-        <td>${esc(x.frm)}${city ? `<small> ${esc(city)}</small>` : ""}</td>
-        <td>${x.leg ? esc(x.leg.gate || "—") : `<small>N/A</small>`}</td>
-        <td>${x.eta == null ? `<small>${x.isIn ? "arrived (time N/A)" : "N/A"}</small>` : fmt(x.eta)}${x.src === "file" ? `<small> file</small>` : x.leg && eff(x.leg) !== x.leg.sched ? `<small> STA ${fmt(x.leg.sched)}</small>` : ""}${x.leg && x.leg.actual != null ? `<small> landed</small>` : ""}</td>
-        <td class="n">${x.pax}<small> C${x.c} F${x.f} W${x.w} Y${x.y}</small></td><td class="n">${x.bags == null ? "—" : x.bags}</td>
-        <td class="n cx">${x.conx == null ? "—" : x.conx + " min"}</td></tr>`;
-    }).join("");
-    const pax = rows.reduce((a, x) => a + x.pax, 0), bags = rows.reduce((a, x) => a + (x.bags || 0), 0);
-    const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
-    return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">
-      <div class="fids-head"><h3>${esc(b.dl_flight)}<small>CONNECTING ARRIVALS · ETD ${esc(b.etd_hhmm)}</small></h3>
-        <div class="fids-meta">${rows.length} flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>
-      <div class="tablewrap"><table><thead><tr><th>Arriving flight</th><th>From</th><th>Gate</th><th>ETA</th><th class="n">Total pax</th><th class="n">Bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No flights.</td></tr>`}</tbody></table></div>
-    </div>`;
+/* FIDS 전광판: 보드 하나가 DL 편 하나입니다. Inbound 보드는 Inbound 페이지에, Outbound 보드는 Outbound 페이지에 나옵니다. */
+function cbBoardHtml(b, midnight) {
+  const out = b.direction === "OUT", d = b.data || {};
+  const ref = Math.round((new Date(b.time_at).getTime() - midnight.getTime()) / 60000);
+  const built = cbBuild(d, ref, b.direction).sort((a, c) => (a.conx == null) - (c.conx == null) || a.conx - c.conx);
+  const rows = built.filter(x => x.conx == null || x.conx < 180);                // 연결 시간이 180분 이상이면 표시하지 않습니다
+  const hidden = built.length - rows.length;
+  const body = rows.map(x => {
+    const st = x.conx == null ? null : (x.conx < 30 ? { cls: "mis" } : cxStatus(x.conx));
+    const delayed = x.leg && eff(x.leg) !== x.leg.sched;
+    return `<tr${st ? ` class="x-${st.cls}"` : ""}><td class="fl">${esc(x.label)}${x.cs.length ? `<small> ${esc(x.cs.join(" "))}</small>` : ""}${x.star ? `<small title="Marked ** in the report"> **</small>` : ""}</td>
+      <td>${esc((x.leg && x.leg.apt) || x.frm)}</td>
+      <td>${x.leg ? esc(x.leg.gate || "—") : `<small>N/A</small>`}</td>
+      <td>${x.t == null ? `<small>${x.isIn ? "arrived (time N/A)" : "N/A"}</small>` : fmt(x.t)}${x.src === "file" ? `<small> file</small>` : delayed ? `<small> ${out ? "STA" : "STD"} ${fmt(x.leg.sched)}</small>` : ""}${x.leg && x.leg.actual != null ? `<small> ${out ? "landed" : "departed"}</small>` : ""}</td>
+      <td class="n">${x.pax}<small> C${x.c} F${x.f} W${x.w} Y${x.y}</small></td><td class="n">${x.bags == null ? "—" : x.bags}</td>
+      <td class="n cx">${x.conx == null ? "—" : x.conx + " min"}</td></tr>`;
   }).join("");
+  const pax = rows.reduce((a, x) => a + x.pax, 0), bags = rows.reduce((a, x) => a + (x.bags || 0), 0);
+  const left = Math.max(0, Math.floor((new Date(b.expires_at).getTime() - Date.now()) / 60000));
+  return `<div class="fids" role="region" aria-label="${esc(b.dl_flight)} connections">
+    <div class="fids-head"><h3>${esc(b.dl_flight)}<small>${out ? "DEPARTURE · ETD" : "ARRIVAL · ETA"} ${esc(b.time_hhmm)}</small></h3>
+      <div class="fids-meta">${rows.length} connecting flights · ${pax} pax · ${bags} bags${b.report_date ? ` · ${esc(b.report_date)}` : ""}${hidden ? ` · ${hidden} hidden (CONX 180 min or more)` : ""}<br>Updated by ${esc(b.created_by_email || "")} ${cpWhen(b.created_at)} · ${Math.floor(left / 60)}h ${left % 60}m left<button type="button" data-bid="${esc(b.id)}">Discard now</button></div></div>
+    <div class="tablewrap"><table><thead><tr><th>${out ? "Arriving flight" : "Departing flight"}</th><th>${out ? "From" : "To"}</th><th>Gate</th><th>${out ? "ETA" : "ETD"}</th><th class="n">Total pax</th><th class="n">Bags</th><th class="n">CONX time</th></tr></thead><tbody>${body || `<tr><td colspan="7" class="fids-empty">No connecting flight under 180 minutes.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+function cbRender() {
+  if (SB.session) $("#cbUser").textContent = SB.session.email;
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const inb = cb.records.filter(b => b.direction === "IN"), out = cb.records.filter(b => b.direction === "OUT");
+  $("#cbBoardsIn").innerHTML = inb.map(b => cbBoardHtml(b, midnight)).join("");
+  $("#cbBoardsOut").innerHTML = out.length ? out.map(b => cbBoardHtml(b, midnight)).join("") : `<div class="cp-empty">No outbound boards yet. Use Data upload, choose Outbound, enter the DL departure flight and ETD, and attach the .txt report.</div>`;
 }
 
+document.querySelectorAll('input[name="cbDir"]').forEach(r => r.addEventListener("change", cbDirUi));
 $("#cbForm").addEventListener("submit", e => { e.preventDefault(); cbSave(); });
 $("#cbFile").addEventListener("change", async e => {
   const f = e.target.files && e.target.files[0];
@@ -2175,14 +2207,17 @@ $("#cbFile").addEventListener("change", async e => {
   cbPreview();
 });
 $("#cbRefresh").addEventListener("click", cbRefresh);
-$("#cbBoards").addEventListener("click", async e => {
+$("#cpRefresh").addEventListener("click", cbRefresh);
+async function cbDiscard(e) {
   const b = e.target.closest("button[data-bid]"); if (!b) return;
   if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Confirm discard"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "Discard now"; }, 4000); return; }
   try { await SB.rest(`dl_conx_boards?id=eq.${encodeURIComponent(b.dataset.bid)}`, { method: "DELETE", prefer: "return=minimal" }); await cbRefresh(); }
   catch (err) { cbHandleError(err); }
-});
-setInterval(() => { if (!$("#viewConn").hidden && cpSub() === "up" && SB.session && !SB.problem()) cbRefresh(); }, 30000);
-cbRender();
+}
+$("#cbBoardsIn").addEventListener("click", cbDiscard);
+$("#cbBoardsOut").addEventListener("click", cbDiscard);
+setInterval(() => { if (!$("#viewConn").hidden && SB.session && !SB.problem()) cbRefresh(); }, 30000);
+cbDirUi(); cbRender();
 
 /* ---- Gate Planner ver2: 로그인한 사용자에게만 보이는 Gate Planner + 환승 현황 배지 ----
    화면은 기존 Gate Planner 와 같고, 로그인 세션(SB)은 Connection Planner 와 공유합니다.
